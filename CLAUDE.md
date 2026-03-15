@@ -10,7 +10,7 @@
 ## Architecture
 
 Two source files:
-- `src/index.ts` — MCP server setup, 26 tool definitions (24 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
+- `src/index.ts` — MCP server setup, 36 tool definitions (34 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
 - `src/meshy-client.ts` — Meshy API HTTP client with retry logic and generic `getTask()` for polling
 
 ## Key Patterns
@@ -28,8 +28,17 @@ Two source files:
 
 - `MESHY_API_KEY` (required) — Meshy API bearer token
 
+## Versioning
+
+Follow [Semantic Versioning](https://semver.org/) (SemVer). Update `version` in `package.json` with every code change:
+- **MAJOR** (X.0.0) — breaking changes to tool names, removed tools, changed input schemas
+- **MINOR** (0.X.0) — new tools, new optional parameters, new features
+- **PATCH** (0.0.X) — bug fixes, internal refactors, documentation, test changes
+
+Version is read from `package.json` at runtime and reported to MCP clients. Always bump the version as part of the same commit that changes the code.
+
 ## Testing
 
 - Tests use vitest with `global.fetch` mocking
 - `tests/meshy-client.test.ts` — client retry/error/header tests
-- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 26 tools covered)
+- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 36 tools covered)
