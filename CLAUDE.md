@@ -10,7 +10,7 @@
 ## Architecture
 
 Two source files:
-- `src/index.ts` — MCP server setup, 27 tool definitions (25 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
+- `src/index.ts` — MCP server setup, 26 tool definitions (24 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
 - `src/meshy-client.ts` — Meshy API HTTP client with retry logic and generic `getTask()` for polling
 
 ## Key Patterns
@@ -32,4 +32,4 @@ Two source files:
 
 - Tests use vitest with `global.fetch` mocking
 - `tests/meshy-client.test.ts` — client retry/error/header tests
-- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 27 tools covered)
+- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 26 tools covered)
