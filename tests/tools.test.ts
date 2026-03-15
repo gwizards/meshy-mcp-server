@@ -527,6 +527,98 @@ describe("MCP Tools", () => {
       expect(text).toContain("Textures");
     });
 
+    it("extracts rigging result URLs from completed task", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "rig-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            result: {
+              rigged_character_glb_url: "https://example.com/rigged.glb",
+              rigged_character_fbx_url: "https://example.com/rigged.fbx",
+              basic_animations: {
+                walking_glb_url: "https://example.com/walk.glb",
+                running_glb_url: "https://example.com/run.glb",
+              },
+            },
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: "rigging_get",
+        arguments: { id: "rig-1" },
+      });
+
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+      expect(text).toContain("Rigged Model:");
+      expect(text).toContain("GLB: https://example.com/rigged.glb");
+      expect(text).toContain("FBX: https://example.com/rigged.fbx");
+      expect(text).toContain("Basic Animations:");
+      expect(text).toContain("walking_glb_url: https://example.com/walk.glb");
+    });
+
+    it("extracts animation result URLs from completed task", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "anim-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            result: {
+              animation_glb_url: "https://example.com/anim.glb",
+              animation_fbx_url: "https://example.com/anim.fbx",
+              processed_usdz_url: "https://example.com/anim.usdz",
+            },
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: "animation_get",
+        arguments: { id: "anim-1" },
+      });
+
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+      expect(text).toContain("Animation:");
+      expect(text).toContain("GLB: https://example.com/anim.glb");
+      expect(text).toContain("FBX: https://example.com/anim.fbx");
+      expect(text).toContain("processed_usdz_url: https://example.com/anim.usdz");
+    });
+
+    it("extracts image URLs from completed image-to-image task", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "i2i-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            image_urls: [
+              "https://example.com/out1.png",
+              "https://example.com/out2.png",
+            ],
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: "image_to_image_get",
+        arguments: { id: "i2i-1" },
+      });
+
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+      expect(text).toContain("Generated Images:");
+      expect(text).toContain("1: https://example.com/out1.png");
+      expect(text).toContain("2: https://example.com/out2.png");
+    });
+
     it("shows progress for in-progress task", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(

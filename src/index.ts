@@ -61,6 +61,43 @@ function formatTaskResponse(task: Record<string, unknown>): string {
         }
       }
     }
+    // Rigging results
+    if (task.result && typeof task.result === "object") {
+      const result = task.result as Record<string, unknown>;
+      if (result.rigged_character_glb_url) {
+        lines.push("\nRigged Model:");
+        lines.push(`  GLB: ${result.rigged_character_glb_url}`);
+        if (result.rigged_character_fbx_url) {
+          lines.push(`  FBX: ${result.rigged_character_fbx_url}`);
+        }
+        if (result.basic_animations && typeof result.basic_animations === "object") {
+          lines.push("\nBasic Animations:");
+          for (const [name, url] of Object.entries(result.basic_animations as Record<string, string>)) {
+            lines.push(`  ${name}: ${url}`);
+          }
+        }
+      }
+      // Animation results
+      if (result.animation_glb_url) {
+        lines.push("\nAnimation:");
+        lines.push(`  GLB: ${result.animation_glb_url}`);
+        if (result.animation_fbx_url) {
+          lines.push(`  FBX: ${result.animation_fbx_url}`);
+        }
+        for (const [key, value] of Object.entries(result)) {
+          if (key.startsWith("processed_") && key.endsWith("_url") && typeof value === "string") {
+            lines.push(`  ${key}: ${value}`);
+          }
+        }
+      }
+    }
+    // Image-to-Image results
+    if (Array.isArray(task.image_urls) && task.image_urls.length > 0) {
+      lines.push("\nGenerated Images:");
+      for (let i = 0; i < task.image_urls.length; i++) {
+        lines.push(`  ${i + 1}: ${task.image_urls[i]}`);
+      }
+    }
   }
 
   lines.push(`\nFull response:\n${JSON.stringify(task, null, 2)}`);
