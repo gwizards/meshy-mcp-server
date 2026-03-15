@@ -35,6 +35,28 @@ describe("MeshyClient", () => {
       expect(calls).toBe(2);
     });
 
+    it("uses Retry-After header delay on 429", async () => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("rate limited", {
+            status: 429,
+            headers: { "Retry-After": "3" },
+          });
+        }
+        return new Response(JSON.stringify({ balance: 100 }), { status: 200 });
+      });
+
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      await vi.advanceTimersByTimeAsync(3000);
+      const result = await promise;
+
+      expect(result.balance).toBe(100);
+      expect(calls).toBe(2);
+    });
+
     it("retries on 500 up to 3 times then throws", async () => {
       let calls = 0;
       mockFetch(async () => {

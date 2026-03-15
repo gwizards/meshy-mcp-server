@@ -342,6 +342,22 @@ describe("MCP Tools", () => {
 
       expect(result.isError).toBeFalsy();
     });
+
+    it("text_to_3d_list passes sort_by parameter", async () => {
+      const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([]), { status: 200 })
+      );
+
+      await client.callTool({
+        name: "text_to_3d_list",
+        arguments: { page_num: 1, page_size: 10, sort_by: "-created_at" },
+      });
+
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringContaining("sort_by=-created_at"),
+        expect.anything()
+      );
+    });
   });
 
   describe("delete tools", () => {
@@ -366,6 +382,141 @@ describe("MCP Tools", () => {
       const text = (result.content as Array<{ type: string; text: string }>)[0]
         .text;
       expect(text).toContain("deleted");
+    });
+  });
+
+  // --- Response formatting ---
+
+  describe("response formatting", () => {
+    it("extracts download URLs from completed task", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            model_urls: {
+              glb: "https://example.com/model.glb",
+              fbx: "https://example.com/model.fbx",
+            },
+            texture_urls: [{ base_color: "https://example.com/tex.png" }],
+            thumbnail_url: "https://example.com/thumb.png",
+            prompt: "a red car",
+          }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: "text_to_3d_get",
+        arguments: { id: "task-1" },
+      });
+
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+      expect(text).toContain("Download URLs");
+      expect(text).toContain("https://example.com/model.glb");
+      expect(text).toContain("Thumbnail");
+      expect(text).toContain("Textures");
+    });
+
+    it("shows progress for in-progress task", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: 45 }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: "text_to_3d_get",
+        arguments: { id: "task-1" },
+      });
+
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("IN_PROGRESS");
+      expect(text).toContain("45%");
+    });
+  });
+
+  // --- wait_for_task ---
+
+  describe("wait_for_task", () => {
+    it("polls until task succeeds", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 3) {
+          return new Response(
+            JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: calls * 30 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            model_urls: { glb: "https://example.com/model.glb" },
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "text_to_3d", task_id: "task-1" },
+      });
+
+      for (let i = 0; i < 10; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+      expect(text).toContain("https://example.com/model.glb");
+    });
+
+    it("returns error when task fails", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: 50 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "FAILED",
+            progress: 50,
+            task_error: { message: "Generation failed" },
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "text_to_3d", task_id: "task-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("FAILED");
     });
   });
 });

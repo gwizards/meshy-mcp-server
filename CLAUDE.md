@@ -10,13 +10,16 @@
 ## Architecture
 
 Two source files:
-- `src/index.ts` — MCP server setup, tool registration, validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
-- `src/meshy-client.ts` — Meshy API HTTP client with retry logic
+- `src/index.ts` — MCP server setup, 27 tool definitions (25 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
+- `src/meshy-client.ts` — Meshy API HTTP client with retry logic and generic `getTask()` for polling
 
 ## Key Patterns
 
 - All tool handlers wrap in try-catch and return `{ isError: true }` on failure
-- `MeshyClient.request()` retries transient errors (429, 5xx) and network errors with exponential backoff (1s, 2s, 4s)
+- `MeshyClient.request()` retries transient errors (429, 5xx) and network errors with exponential backoff
+- Retry logic respects `Retry-After` header on 429 responses
+- `wait_for_task` polls any task type until terminal state (SUCCEEDED/FAILED/CANCELED)
+- Get tool responses format completed tasks with extracted download URLs
 - Zod validates all tool inputs at the MCP layer (including `.int().min(1)` on pagination)
 - Conditional validation in create tools (e.g., prompt required for preview mode)
 - Content-Type header only sent when request body is present
@@ -29,4 +32,4 @@ Two source files:
 
 - Tests use vitest with `global.fetch` mocking
 - `tests/meshy-client.test.ts` — client retry/error/header tests
-- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 25 tools covered)
+- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 27 tools covered)

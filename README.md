@@ -83,22 +83,22 @@ Add to your config file:
 
 ### Text-to-3D Workflow
 
-The most common workflow involves generating a preview, then refining it:
+The most common workflow uses `wait_for_task` to handle polling automatically:
 
 1. **Generate preview** — `text_to_3d_create` with `mode: "preview"` and your prompt
-2. **Poll for completion** — `text_to_3d_get` until `status` is `"SUCCEEDED"`
+2. **Wait for completion** — `wait_for_task` with `task_type: "text_to_3d"` — returns download URLs when done
 3. **Refine the model** — `text_to_3d_create` with `mode: "refine"` and the `preview_task_id`
-4. **Poll again** — `text_to_3d_get` until the refined model is ready
-5. **Export** (optional) — `remesh_create` to convert to your preferred format
+4. **Wait again** — `wait_for_task` returns the final model with download URLs
+5. **Export** (optional) — `remesh_create` then `wait_for_task`
 
 ### Image-to-3D Pipeline
 
 Combine text-to-image with image-to-3D for a fully text-driven pipeline:
 
 1. **Generate reference image** — `text_to_image_create` with your description
-2. **Poll for image** — `text_to_image_get` until complete
+2. **Wait for image** — `wait_for_task` with `task_type: "text_to_image"`
 3. **Generate 3D from image** — `image_to_3d_create` with the resulting image URL
-4. **Poll for 3D model** — `image_to_3d_get` until complete
+4. **Wait for 3D model** — `wait_for_task` with `task_type: "image_to_3d"`
 
 ### Example Prompts
 
@@ -159,6 +159,11 @@ Once configured, you can ask Claude things like:
 | `text_to_image_get` | Check task status |
 | `text_to_image_list` | List tasks |
 | `text_to_image_delete` | Delete a task |
+
+### Workflow Helpers
+| Tool | Description |
+|------|-------------|
+| `wait_for_task` | Poll any task until completion — replaces manual `_get` loops |
 
 ### Account
 | Tool | Description |

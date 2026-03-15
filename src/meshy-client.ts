@@ -56,7 +56,10 @@ export class MeshyClient {
         const text = await res.text();
 
         if (retryableStatuses.has(res.status) && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000;
+          const retryAfter = res.headers.get("retry-after");
+          const delay = retryAfter
+            ? parseInt(retryAfter, 10) * 1000
+            : Math.pow(2, attempt) * 1000;
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
@@ -99,8 +102,10 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v2/text-to-3d/${id}`);
   }
 
-  async listTextTo3D(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v2/text-to-3d?page_num=${pageNum}&page_size=${pageSize}`);
+  async listTextTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v2/text-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteTextTo3D(id: string): Promise<void> {
@@ -129,8 +134,10 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v1/image-to-3d/${id}`);
   }
 
-  async listImageTo3D(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v1/image-to-3d?page_num=${pageNum}&page_size=${pageSize}`);
+  async listImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/image-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteImageTo3D(id: string): Promise<void> {
@@ -155,8 +162,10 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v1/multi-image-to-3d/${id}`);
   }
 
-  async listMultiImageTo3D(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v1/multi-image-to-3d?page_num=${pageNum}&page_size=${pageSize}`);
+  async listMultiImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/multi-image-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteMultiImageTo3D(id: string): Promise<void> {
@@ -182,8 +191,10 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v1/remesh/${id}`);
   }
 
-  async listRemesh(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v1/remesh?page_num=${pageNum}&page_size=${pageSize}`);
+  async listRemesh(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/remesh?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteRemesh(id: string): Promise<void> {
@@ -209,8 +220,10 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v1/retexture/${id}`);
   }
 
-  async listRetexture(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v1/retexture?page_num=${pageNum}&page_size=${pageSize}`);
+  async listRetexture(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/retexture?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteRetexture(id: string): Promise<void> {
@@ -233,12 +246,32 @@ export class MeshyClient {
     return this.request("GET", `/openapi/v1/text-to-image/${id}`);
   }
 
-  async listTextToImage(pageNum = 1, pageSize = 10): Promise<MeshyTask[]> {
-    return this.request("GET", `/openapi/v1/text-to-image?page_num=${pageNum}&page_size=${pageSize}`);
+  async listTextToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/text-to-image?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
   }
 
   async deleteTextToImage(id: string): Promise<void> {
     await this.request("DELETE", `/openapi/v1/text-to-image/${id}`);
+  }
+
+  // --- Generic task getter (for polling) ---
+
+  async getTask(taskType: string, id: string): Promise<MeshyTask> {
+    const pathMap: Record<string, string> = {
+      text_to_3d: "/openapi/v2/text-to-3d",
+      image_to_3d: "/openapi/v1/image-to-3d",
+      multi_image_to_3d: "/openapi/v1/multi-image-to-3d",
+      remesh: "/openapi/v1/remesh",
+      retexture: "/openapi/v1/retexture",
+      text_to_image: "/openapi/v1/text-to-image",
+    };
+    const basePath = pathMap[taskType];
+    if (!basePath) {
+      throw new Error(`Unknown task type: ${taskType}`);
+    }
+    return this.request("GET", `${basePath}/${id}`);
   }
 
   // --- Balance ---

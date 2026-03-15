@@ -29,6 +29,44 @@ function validationError(message: string) {
   };
 }
 
+function formatTaskResponse(task: Record<string, unknown>): string {
+  const lines: string[] = [];
+  lines.push(`Status: ${task.status}`);
+
+  if (typeof task.progress === "number") {
+    lines.push(`Progress: ${task.progress}%`);
+  }
+  if (task.prompt) {
+    lines.push(`Prompt: ${task.prompt}`);
+  }
+  if (task.task_error && typeof task.task_error === "object" && (task.task_error as Record<string, unknown>).message) {
+    lines.push(`Error: ${(task.task_error as Record<string, unknown>).message}`);
+  }
+
+  if (task.status === "SUCCEEDED") {
+    if (task.model_urls && typeof task.model_urls === "object") {
+      lines.push("\nDownload URLs:");
+      for (const [format, url] of Object.entries(task.model_urls as Record<string, string>)) {
+        lines.push(`  ${format}: ${url}`);
+      }
+    }
+    if (task.thumbnail_url) {
+      lines.push(`\nThumbnail: ${task.thumbnail_url}`);
+    }
+    if (Array.isArray(task.texture_urls) && task.texture_urls.length > 0) {
+      lines.push("\nTextures:");
+      for (const tex of task.texture_urls) {
+        for (const [name, url] of Object.entries(tex as Record<string, string>)) {
+          lines.push(`  ${name}: ${url}`);
+        }
+      }
+    }
+  }
+
+  lines.push(`\nFull response:\n${JSON.stringify(task, null, 2)}`);
+  return lines.join("\n");
+}
+
 export function createServer(apiKey?: string): McpServer {
   const key = apiKey ?? process.env.MESHY_API_KEY;
   if (!key) {
@@ -59,6 +97,7 @@ export function createServer(apiKey?: string): McpServer {
       texture_prompt: z.string().optional().describe("Additional texture description"),
       symmetry_mode: z.string().optional().describe("Symmetry mode for the model"),
       texture_image_url: z.string().optional().describe("Reference image URL for texture"),
+      moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
     },
     async (params) => {
       try {
@@ -85,7 +124,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getTextTo3D(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -98,10 +137,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listTextTo3D(page_num, page_size);
+        const tasks = await client.listTextTo3D(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -140,6 +180,7 @@ export function createServer(apiKey?: string): McpServer {
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
       texture_prompt: z.string().optional().describe("Additional texture description"),
       texture_image_url: z.string().optional().describe("Reference image URL for texture"),
+      moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
     },
     async (params) => {
       try {
@@ -158,7 +199,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getImageTo3D(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -171,10 +212,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listImageTo3D(page_num, page_size);
+        const tasks = await client.listImageTo3D(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -209,6 +251,7 @@ export function createServer(apiKey?: string): McpServer {
       should_remesh: z.boolean().optional().describe("Whether to remesh the output"),
       should_texture: z.boolean().optional().describe("Whether to generate textures"),
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
+      moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
     },
     async (params) => {
       try {
@@ -227,7 +270,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getMultiImageTo3D(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -240,10 +283,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listMultiImageTo3D(page_num, page_size);
+        const tasks = await client.listMultiImageTo3D(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -300,7 +344,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getRemesh(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -313,10 +357,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listRemesh(page_num, page_size);
+        const tasks = await client.listRemesh(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -352,6 +397,7 @@ export function createServer(apiKey?: string): McpServer {
       enable_original_uv: z.boolean().optional().describe("Keep original UV mapping"),
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
       remove_lighting: z.boolean().optional().describe("Remove baked lighting"),
+      moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
     },
     async (params) => {
       try {
@@ -376,7 +422,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getRetexture(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -389,10 +435,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listRetexture(page_num, page_size);
+        const tasks = await client.listRetexture(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -425,6 +472,7 @@ export function createServer(apiKey?: string): McpServer {
       generate_multi_view: z.boolean().optional().describe("Generate multi-angle views"),
       pose_mode: z.string().optional().describe("'a-pose' or 't-pose' for characters"),
       aspect_ratio: z.string().optional().describe("'1:1', '16:9', '9:16', '4:3', or '3:4'"),
+      moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
     },
     async (params) => {
       try {
@@ -443,7 +491,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ id }) => {
       try {
         const task = await client.getTextToImage(id);
-        return { content: [{ type: "text", text: formatTask(task) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -456,10 +504,11 @@ export function createServer(apiKey?: string): McpServer {
     {
       page_num: z.number().int().min(1).default(1).describe("Page number"),
       page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
     },
-    async ({ page_num, page_size }) => {
+    async ({ page_num, page_size, sort_by }) => {
       try {
-        const tasks = await client.listTextToImage(page_num, page_size);
+        const tasks = await client.listTextToImage(page_num, page_size, sort_by);
         return { content: [{ type: "text", text: formatTask(tasks) }] };
       } catch (error) {
         return errorResult(error);
@@ -475,6 +524,51 @@ export function createServer(apiKey?: string): McpServer {
       try {
         await client.deleteTextToImage(id);
         return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  // --- Wait for Task ---
+
+  server.tool(
+    "wait_for_task",
+    "Poll a task until it reaches a terminal state (SUCCEEDED, FAILED, or CANCELED). Returns the final task result with download URLs. Use this instead of manually calling _get in a loop.",
+    {
+      task_type: z.enum(["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image"]).describe("The type of task to poll"),
+      task_id: z.string().describe("Task ID to poll"),
+      poll_interval: z.number().int().min(2).max(30).default(5).optional().describe("Seconds between polls (default 5)"),
+      timeout: z.number().int().min(10).max(600).default(300).optional().describe("Maximum seconds to wait (default 300)"),
+    },
+    async (params) => {
+      try {
+        const interval = (params.poll_interval ?? 5) * 1000;
+        const maxTime = (params.timeout ?? 300) * 1000;
+        const startTime = Date.now();
+
+        while (true) {
+          const task = await client.getTask(params.task_type, params.task_id) as Record<string, unknown>;
+
+          if (task.status === "SUCCEEDED") {
+            return { content: [{ type: "text", text: formatTaskResponse(task) }] };
+          }
+          if (task.status === "FAILED" || task.status === "CANCELED") {
+            return {
+              content: [{ type: "text", text: `Task ${task.status}.\n\n${formatTaskResponse(task)}` }],
+              isError: true,
+            };
+          }
+
+          if (Date.now() - startTime >= maxTime) {
+            return {
+              content: [{ type: "text", text: `Timed out after ${params.timeout ?? 300}s. Last status: ${task.status}, progress: ${task.progress}%` }],
+              isError: true,
+            };
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, interval));
+        }
       } catch (error) {
         return errorResult(error);
       }
