@@ -73,10 +73,17 @@ export class MeshyClient {
 
       const text = await res.text();
       if (!text) {
-        return {} as T;
+        if (method === "DELETE") {
+          return {} as T;
+        }
+        throw new Error(`Meshy API returned empty response for ${method} ${path}`);
       }
 
-      return JSON.parse(text) as T;
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        throw new Error(`Meshy API returned non-JSON response: ${text.slice(0, 200)}`);
+      }
     }
 
     // Unreachable: loop always returns or throws, but TypeScript requires this
@@ -104,7 +111,7 @@ export class MeshyClient {
   }
 
   async getTextTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v2/text-to-3d/${id}`);
+    return this.request("GET", `/openapi/v2/text-to-3d/${encodeURIComponent(id)}`);
   }
 
   async listTextTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -114,7 +121,7 @@ export class MeshyClient {
   }
 
   async deleteTextTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v2/text-to-3d/${id}`);
+    await this.request("DELETE", `/openapi/v2/text-to-3d/${encodeURIComponent(id)}`);
   }
 
   // --- Image to 3D ---
@@ -137,7 +144,7 @@ export class MeshyClient {
   }
 
   async getImageTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/image-to-3d/${id}`);
+    return this.request("GET", `/openapi/v1/image-to-3d/${encodeURIComponent(id)}`);
   }
 
   async listImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -147,7 +154,7 @@ export class MeshyClient {
   }
 
   async deleteImageTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/image-to-3d/${id}`);
+    await this.request("DELETE", `/openapi/v1/image-to-3d/${encodeURIComponent(id)}`);
   }
 
   // --- Multi-Image to 3D ---
@@ -166,7 +173,7 @@ export class MeshyClient {
   }
 
   async getMultiImageTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/multi-image-to-3d/${id}`);
+    return this.request("GET", `/openapi/v1/multi-image-to-3d/${encodeURIComponent(id)}`);
   }
 
   async listMultiImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -176,7 +183,7 @@ export class MeshyClient {
   }
 
   async deleteMultiImageTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/multi-image-to-3d/${id}`);
+    await this.request("DELETE", `/openapi/v1/multi-image-to-3d/${encodeURIComponent(id)}`);
   }
 
   // --- Remesh ---
@@ -195,7 +202,7 @@ export class MeshyClient {
   }
 
   async getRemesh(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/remesh/${id}`);
+    return this.request("GET", `/openapi/v1/remesh/${encodeURIComponent(id)}`);
   }
 
   async listRemesh(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -205,7 +212,7 @@ export class MeshyClient {
   }
 
   async deleteRemesh(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/remesh/${id}`);
+    await this.request("DELETE", `/openapi/v1/remesh/${encodeURIComponent(id)}`);
   }
 
   // --- Retexture ---
@@ -225,7 +232,7 @@ export class MeshyClient {
   }
 
   async getRetexture(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/retexture/${id}`);
+    return this.request("GET", `/openapi/v1/retexture/${encodeURIComponent(id)}`);
   }
 
   async listRetexture(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -235,7 +242,7 @@ export class MeshyClient {
   }
 
   async deleteRetexture(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/retexture/${id}`);
+    await this.request("DELETE", `/openapi/v1/retexture/${encodeURIComponent(id)}`);
   }
 
   // --- Rigging ---
@@ -250,11 +257,11 @@ export class MeshyClient {
   }
 
   async getRigging(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/rigging/${id}`);
+    return this.request("GET", `/openapi/v1/rigging/${encodeURIComponent(id)}`);
   }
 
   async deleteRigging(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/rigging/${id}`);
+    await this.request("DELETE", `/openapi/v1/rigging/${encodeURIComponent(id)}`);
   }
 
   // --- Animation ---
@@ -271,11 +278,11 @@ export class MeshyClient {
   }
 
   async getAnimation(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/animations/${id}`);
+    return this.request("GET", `/openapi/v1/animations/${encodeURIComponent(id)}`);
   }
 
   async deleteAnimation(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/animations/${id}`);
+    await this.request("DELETE", `/openapi/v1/animations/${encodeURIComponent(id)}`);
   }
 
   // --- Text to Image ---
@@ -292,7 +299,7 @@ export class MeshyClient {
   }
 
   async getTextToImage(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/text-to-image/${id}`);
+    return this.request("GET", `/openapi/v1/text-to-image/${encodeURIComponent(id)}`);
   }
 
   async listTextToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -302,7 +309,7 @@ export class MeshyClient {
   }
 
   async deleteTextToImage(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/text-to-image/${id}`);
+    await this.request("DELETE", `/openapi/v1/text-to-image/${encodeURIComponent(id)}`);
   }
 
   // --- Image to Image ---
@@ -317,7 +324,7 @@ export class MeshyClient {
   }
 
   async getImageToImage(id: string): Promise<MeshyTask> {
-    return this.request("GET", `/openapi/v1/image-to-image/${id}`);
+    return this.request("GET", `/openapi/v1/image-to-image/${encodeURIComponent(id)}`);
   }
 
   async listImageToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
@@ -327,7 +334,7 @@ export class MeshyClient {
   }
 
   async deleteImageToImage(id: string): Promise<void> {
-    await this.request("DELETE", `/openapi/v1/image-to-image/${id}`);
+    await this.request("DELETE", `/openapi/v1/image-to-image/${encodeURIComponent(id)}`);
   }
 
   // --- Generic task getter (for polling) ---
@@ -348,7 +355,7 @@ export class MeshyClient {
     if (!basePath) {
       throw new Error(`Unknown task type: ${taskType}`);
     }
-    return this.request("GET", `${basePath}/${id}`);
+    return this.request("GET", `${basePath}/${encodeURIComponent(id)}`);
   }
 
   // --- Balance ---

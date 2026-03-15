@@ -426,6 +426,47 @@ describe("MeshyClient", () => {
       );
     });
 
+    it("encodes task IDs in URL path", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ id: "test", status: "SUCCEEDED", progress: 100, created_at: 0 }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await client.getTextTo3D("../../v1/balance");
+
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/openapi/v2/text-to-3d/..%2F..%2Fv1%2Fbalance"),
+        expect.anything()
+      );
+    });
+
+    it("throws descriptive error when API returns non-JSON response", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("<!DOCTYPE html><html>Gateway Error</html>", { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await expect(client.getBalance()).rejects.toThrow("non-JSON response");
+    });
+
+    it("throws error when GET response has empty body", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("", { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await expect(client.getBalance()).rejects.toThrow("empty response");
+    });
+
+    it("returns successfully for DELETE with empty body", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("", { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await expect(client.deleteTextTo3D("task-1")).resolves.not.toThrow();
+    });
+
     it("URL-encodes sort_by parameter with + character", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify([]), { status: 200 })
