@@ -57,6 +57,52 @@ describe("MeshyClient", () => {
       expect(calls).toBe(2);
     });
 
+    it("caps Retry-After at 60 seconds", async () => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("rate limited", {
+            status: 429,
+            headers: { "Retry-After": "9999" },
+          });
+        }
+        return new Response(JSON.stringify({ balance: 100 }), { status: 200 });
+      });
+
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      // Should be capped at 60s, not 9999s
+      await vi.advanceTimersByTimeAsync(60000);
+      const result = await promise;
+
+      expect(result.balance).toBe(100);
+      expect(calls).toBe(2);
+    });
+
+    it("falls back to exponential backoff on non-numeric Retry-After", async () => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("rate limited", {
+            status: 429,
+            headers: { "Retry-After": "not-a-number" },
+          });
+        }
+        return new Response(JSON.stringify({ balance: 100 }), { status: 200 });
+      });
+
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      // Falls back to 2^0 * 1000 = 1000ms
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await promise;
+
+      expect(result.balance).toBe(100);
+      expect(calls).toBe(2);
+    });
+
     it("retries on 500 up to 3 times then throws", async () => {
       let calls = 0;
       mockFetch(async () => {

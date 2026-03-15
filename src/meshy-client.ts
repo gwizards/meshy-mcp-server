@@ -57,9 +57,15 @@ export class MeshyClient {
 
         if (retryableStatuses.has(res.status) && attempt < maxRetries) {
           const retryAfter = res.headers.get("retry-after");
-          const delay = retryAfter
-            ? parseInt(retryAfter, 10) * 1000
-            : Math.pow(2, attempt) * 1000;
+          const defaultDelay = Math.pow(2, attempt) * 1000;
+          const MAX_RETRY_DELAY = 60_000;
+          let delay = defaultDelay;
+          if (retryAfter) {
+            const parsed = parseInt(retryAfter, 10);
+            delay = Number.isFinite(parsed) && parsed > 0
+              ? Math.min(parsed * 1000, MAX_RETRY_DELAY)
+              : defaultDelay;
+          }
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
