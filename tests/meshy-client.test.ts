@@ -313,6 +313,73 @@ describe("MeshyClient", () => {
       );
     });
 
+    it("createImageToImage sends POST with params", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ result: "i2i-task-1" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.createImageToImage({
+        ai_model: "nano-banana",
+        prompt: "make it blue",
+        reference_image_urls: ["https://example.com/ref.jpg"],
+      });
+
+      expect(res.result).toBe("i2i-task-1");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/image-to-image",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            ai_model: "nano-banana",
+            prompt: "make it blue",
+            reference_image_urls: ["https://example.com/ref.jpg"],
+          }),
+        })
+      );
+    });
+
+    it("getImageToImage sends GET", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ id: "i2i-1", status: "SUCCEEDED" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.getImageToImage("i2i-1");
+
+      expect(res.status).toBe("SUCCEEDED");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/image-to-image/i2i-1",
+        expect.objectContaining({ method: "GET" })
+      );
+    });
+
+    it("listImageToImage sends GET with pagination", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify([{ id: "i2i-1" }]), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await client.listImageToImage(2, 20, "-created_at");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/image-to-image?page_num=2&page_size=20&sort_by=-created_at",
+        expect.objectContaining({ method: "GET" })
+      );
+    });
+
+    it("deleteImageToImage sends DELETE", async () => {
+      mockFetch(async () => new Response(null, { status: 204 }));
+
+      const client = new MeshyClient("test-key");
+      await client.deleteImageToImage("i2i-1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/image-to-image/i2i-1",
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
     it("createTextTo3D sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "task-abc" }), { status: 200 })

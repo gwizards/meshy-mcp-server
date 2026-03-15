@@ -296,6 +296,31 @@ export class MeshyClient {
     await this.request("DELETE", `/openapi/v1/text-to-image/${id}`);
   }
 
+  // --- Image to Image ---
+
+  async createImageToImage(params: {
+    ai_model: string;
+    prompt: string;
+    reference_image_urls: string[];
+    generate_multi_view?: boolean;
+  }): Promise<{ result: string }> {
+    return this.request("POST", "/openapi/v1/image-to-image", params as Record<string, unknown>);
+  }
+
+  async getImageToImage(id: string): Promise<MeshyTask> {
+    return this.request("GET", `/openapi/v1/image-to-image/${id}`);
+  }
+
+  async listImageToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    let path = `/openapi/v1/image-to-image?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${sortBy}`;
+    return this.request("GET", path);
+  }
+
+  async deleteImageToImage(id: string): Promise<void> {
+    await this.request("DELETE", `/openapi/v1/image-to-image/${id}`);
+  }
+
   // --- Generic task getter (for polling) ---
 
   async getTask(taskType: string, id: string): Promise<MeshyTask> {
