@@ -109,6 +109,10 @@ export class MeshyClient {
     texture_prompt?: string;
     texture_image_url?: string;
     moderation?: boolean;
+    model_type?: string;
+    should_remesh?: boolean;
+    pose_mode?: string;
+    remove_lighting?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v2/text-to-3d", params as Record<string, unknown>);
   }
@@ -142,6 +146,10 @@ export class MeshyClient {
     texture_prompt?: string;
     texture_image_url?: string;
     moderation?: boolean;
+    save_pre_remeshed_model?: boolean;
+    pose_mode?: string;
+    image_enhancement?: boolean;
+    remove_lighting?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/image-to-3d", params as Record<string, unknown>);
   }
@@ -171,6 +179,13 @@ export class MeshyClient {
     should_texture?: boolean;
     enable_pbr?: boolean;
     moderation?: boolean;
+    symmetry_mode?: string;
+    save_pre_remeshed_model?: boolean;
+    pose_mode?: string;
+    image_enhancement?: boolean;
+    remove_lighting?: boolean;
+    texture_prompt?: string;
+    texture_image_url?: string;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/multi-image-to-3d", params as Record<string, unknown>);
   }

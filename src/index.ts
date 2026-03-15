@@ -137,6 +137,10 @@ export function createServer(apiKey?: string): McpServer {
       symmetry_mode: z.string().optional().describe("Symmetry mode for the model"),
       texture_image_url: z.string().optional().describe("Reference image URL for texture"),
       moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
+      model_type: z.enum(["standard", "lowpoly"]).optional().describe("Model type: 'standard' or 'lowpoly' (preview only)"),
+      should_remesh: z.boolean().optional().describe("Enable remesh phase (preview only, meshy-6+)"),
+      pose_mode: z.enum(["a-pose", "t-pose", ""]).optional().describe("Pose mode for characters (preview only)"),
+      remove_lighting: z.boolean().optional().describe("Remove baked lighting from textures (refine only)"),
     },
     async (params) => {
       try {
@@ -223,6 +227,10 @@ export function createServer(apiKey?: string): McpServer {
       texture_prompt: z.string().optional().describe("Additional texture description"),
       texture_image_url: z.string().optional().describe("Reference image URL for texture"),
       moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
+      save_pre_remeshed_model: z.boolean().optional().describe("Store pre-remesh GLB model"),
+      pose_mode: z.enum(["a-pose", "t-pose", ""]).optional().describe("Pose mode for characters"),
+      image_enhancement: z.boolean().optional().describe("Optimize input image (default true)"),
+      remove_lighting: z.boolean().optional().describe("Remove highlights and shadows (default true)"),
     },
     async (params) => {
       try {
@@ -297,6 +305,13 @@ export function createServer(apiKey?: string): McpServer {
       should_texture: z.boolean().optional().describe("Whether to generate textures"),
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
       moderation: z.boolean().optional().describe("Screen input for potentially harmful content"),
+      symmetry_mode: z.enum(["off", "auto", "on"]).optional().describe("Symmetry mode: 'off', 'auto', or 'on'"),
+      save_pre_remeshed_model: z.boolean().optional().describe("Store pre-remesh GLB model"),
+      pose_mode: z.enum(["a-pose", "t-pose", ""]).optional().describe("Pose mode for characters"),
+      image_enhancement: z.boolean().optional().describe("Optimize input images (default true)"),
+      remove_lighting: z.boolean().optional().describe("Remove highlights and shadows (default true)"),
+      texture_prompt: z.string().max(600).optional().describe("Additional texture description (max 600 chars)"),
+      texture_image_url: z.string().optional().describe("Reference image URL for texture"),
     },
     async (params) => {
       try {

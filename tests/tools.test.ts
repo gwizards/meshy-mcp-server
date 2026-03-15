@@ -135,6 +135,20 @@ describe("MCP Tools", () => {
       expect(text).toContain("preview_task_id");
     });
 
+    it("succeeds with new optional preview params", async () => {
+      const result = await client.callTool({
+        name: "text_to_3d_create",
+        arguments: {
+          mode: "preview",
+          prompt: "a character",
+          model_type: "lowpoly",
+          should_remesh: true,
+          pose_mode: "a-pose",
+        },
+      });
+      expect(result.isError).toBeFalsy();
+    });
+
     it("succeeds with valid refine params", async () => {
       const result = await client.callTool({
         name: "text_to_3d_create",
@@ -428,6 +442,35 @@ describe("MCP Tools", () => {
         },
       });
 
+      expect(result.isError).toBeFalsy();
+    });
+
+    it("image_to_3d_create succeeds with new optional params", async () => {
+      const result = await client.callTool({
+        name: "image_to_3d_create",
+        arguments: {
+          image_url: "https://example.com/photo.jpg",
+          pose_mode: "t-pose",
+          image_enhancement: false,
+          remove_lighting: true,
+          save_pre_remeshed_model: true,
+        },
+      });
+      expect(result.isError).toBeFalsy();
+    });
+
+    it("multi_image_to_3d_create succeeds with new optional params", async () => {
+      const result = await client.callTool({
+        name: "multi_image_to_3d_create",
+        arguments: {
+          image_urls: ["https://example.com/1.jpg", "https://example.com/2.jpg"],
+          symmetry_mode: "auto",
+          pose_mode: "a-pose",
+          image_enhancement: true,
+          remove_lighting: false,
+          texture_prompt: "realistic wood texture",
+        },
+      });
       expect(result.isError).toBeFalsy();
     });
 
