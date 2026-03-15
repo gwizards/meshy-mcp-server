@@ -190,6 +190,30 @@ describe("MCP Tools", () => {
 
       expect(result.isError).toBeFalsy();
     });
+
+    it("succeeds with model_url instead of input_task_id", async () => {
+      const result = await client.callTool({
+        name: "retexture_create",
+        arguments: {
+          model_url: "https://example.com/model.glb",
+          text_style_prompt: "cyberpunk neon",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+    });
+
+    it("succeeds with image_style_url instead of text_style_prompt", async () => {
+      const result = await client.callTool({
+        name: "retexture_create",
+        arguments: {
+          input_task_id: "task-1",
+          image_style_url: "https://example.com/style.jpg",
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+    });
   });
 
   // --- Rigging validation ---
@@ -792,6 +816,64 @@ describe("MCP Tools", () => {
       expect(result.isError).toBeFalsy();
       const text = (result.content as Array<{ type: string; text: string }>)[0].text;
       expect(text).toContain("SUCCEEDED");
+    });
+
+    it("returns error on timeout", async () => {
+      vi.useFakeTimers();
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        return new Response(
+          JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: 50 }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "text_to_3d", task_id: "task-1", timeout: 10, poll_interval: 2 },
+      });
+
+      for (let i = 0; i < 10; i++) {
+        await vi.advanceTimersByTimeAsync(2000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("Timed out");
+    });
+
+    it("returns error when task is canceled", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: 30 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({ id: "task-1", status: "CANCELED", progress: 30 }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "text_to_3d", task_id: "task-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("CANCELED");
     });
 
     it("returns error when task fails", async () => {

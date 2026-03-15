@@ -127,6 +127,52 @@ describe("MeshyClient", () => {
       expect(caughtError?.message).toBe("fetch failed");
     });
 
+    it("caps Retry-After delay at 60 seconds", async () => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("rate limited", {
+            status: 429,
+            headers: { "Retry-After": "3600" },
+          });
+        }
+        return new Response(JSON.stringify({ balance: 100 }), { status: 200 });
+      });
+
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      // Should be capped at 60s, not 3600s
+      await vi.advanceTimersByTimeAsync(60000);
+      const result = await promise;
+
+      expect(result.balance).toBe(100);
+      expect(calls).toBe(2);
+    });
+
+    it("falls back to exponential backoff on non-numeric Retry-After", async () => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("rate limited", {
+            status: 429,
+            headers: { "Retry-After": "Fri, 31 Dec 2025 23:59:59 GMT" },
+          });
+        }
+        return new Response(JSON.stringify({ balance: 100 }), { status: 200 });
+      });
+
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      // Should use exponential backoff (1s for attempt 0)
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await promise;
+
+      expect(result.balance).toBe(100);
+      expect(calls).toBe(2);
+    });
+
     it.each([502, 503, 504])("retries on %i and succeeds", async (status) => {
       let calls = 0;
       mockFetch(async () => {
@@ -377,6 +423,20 @@ describe("MeshyClient", () => {
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v1/image-to-image/i2i-1",
         expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
+    it("URL-encodes sort_by parameter with + character", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify([]), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await client.listTextTo3D(1, 10, "+created_at");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v2/text-to-3d?page_num=1&page_size=10&sort_by=%2Bcreated_at",
+        expect.anything()
       );
     });
 
