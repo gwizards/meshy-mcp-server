@@ -34,25 +34,39 @@ export class MeshyClient {
     path: string,
     body?: Record<string, unknown>
   ): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const maxRetries = 3;
+    const retryableStatuses = new Set([429, 500, 502, 503, 504]);
 
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Meshy API error ${res.status}: ${text}`);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const res = await fetch(`${BASE_URL}${path}`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+
+        if (retryableStatuses.has(res.status) && attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+
+        throw new Error(`Meshy API error ${res.status}: ${text}`);
+      }
+
+      if (res.status === 204 || res.headers.get("content-length") === "0") {
+        return {} as T;
+      }
+
+      return res.json() as Promise<T>;
     }
 
-    if (res.status === 204 || res.headers.get("content-length") === "0") {
-      return {} as T;
-    }
-
-    return res.json() as Promise<T>;
+    throw new Error("Max retries exceeded");
   }
 
   // --- Text to 3D ---

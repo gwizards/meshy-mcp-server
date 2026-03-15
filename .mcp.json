@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "meshy": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {
+        "MESHY_API_KEY": ""
+      }
+    }
+  }
+}
