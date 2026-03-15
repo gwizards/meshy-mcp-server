@@ -64,11 +64,12 @@ export class MeshyClient {
         throw new Error(`Meshy API error ${res.status}: ${text}`);
       }
 
-      if (res.status === 204 || res.headers.get("content-length") === "0") {
+      const text = await res.text();
+      if (!text) {
         return {} as T;
       }
 
-      return (await res.json()) as T;
+      return JSON.parse(text) as T;
     }
 
     // Unreachable: loop always returns or throws, but TypeScript requires this

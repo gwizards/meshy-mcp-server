@@ -169,8 +169,8 @@ export function createServer(apiKey?: string): McpServer {
     "image_to_3d_list",
     "List image-to-3D tasks.",
     {
-      page_num: z.number().int().min(1).default(1),
-      page_size: z.number().int().min(1).max(50).default(10),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -203,12 +203,12 @@ export function createServer(apiKey?: string): McpServer {
     "Generate a 3D model from multiple images (1-4). Provide publicly accessible URLs.",
     {
       image_urls: z.array(z.string()).min(1).max(4).describe("Array of 1-4 publicly accessible image URLs"),
-      ai_model: z.string().optional(),
-      topology: z.string().optional(),
-      target_polycount: z.number().optional(),
-      should_remesh: z.boolean().optional(),
-      should_texture: z.boolean().optional(),
-      enable_pbr: z.boolean().optional(),
+      ai_model: z.string().optional().describe("AI model to use"),
+      topology: z.string().optional().describe("'quad' or 'triangle'"),
+      target_polycount: z.number().optional().describe("Target polygon count"),
+      should_remesh: z.boolean().optional().describe("Whether to remesh the output"),
+      should_texture: z.boolean().optional().describe("Whether to generate textures"),
+      enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
     },
     async (params) => {
       try {
@@ -238,8 +238,8 @@ export function createServer(apiKey?: string): McpServer {
     "multi_image_to_3d_list",
     "List multi-image-to-3D tasks.",
     {
-      page_num: z.number().int().min(1).default(1),
-      page_size: z.number().int().min(1).max(50).default(10),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -311,8 +311,8 @@ export function createServer(apiKey?: string): McpServer {
     "remesh_list",
     "List remesh tasks.",
     {
-      page_num: z.number().int().min(1).default(1),
-      page_size: z.number().int().min(1).max(50).default(10),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -387,8 +387,8 @@ export function createServer(apiKey?: string): McpServer {
     "retexture_list",
     "List retexture tasks.",
     {
-      page_num: z.number().int().min(1).default(1),
-      page_size: z.number().int().min(1).max(50).default(10),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -454,8 +454,8 @@ export function createServer(apiKey?: string): McpServer {
     "text_to_image_list",
     "List text-to-image tasks.",
     {
-      page_num: z.number().int().min(1).default(1),
-      page_size: z.number().int().min(1).max(50).default(10),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {

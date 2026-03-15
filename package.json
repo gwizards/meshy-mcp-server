@@ -31,8 +31,16 @@
     "ai",
     "model-generation"
   ],
-  "author": "",
+  "author": "gwizards",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gwizards/meshy-mcp-server.git"
+  },
+  "homepage": "https://github.com/gwizards/meshy-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/gwizards/meshy-mcp-server/issues"
+  },
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
