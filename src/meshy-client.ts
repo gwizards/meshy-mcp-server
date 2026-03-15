@@ -230,6 +230,25 @@ export class MeshyClient {
     await this.request("DELETE", `/openapi/v1/retexture/${id}`);
   }
 
+  // --- Rigging ---
+
+  async createRigging(params: {
+    input_task_id?: string;
+    model_url?: string;
+    height_meters?: number;
+    texture_image_url?: string;
+  }): Promise<{ result: string }> {
+    return this.request("POST", "/openapi/v1/rigging", params as Record<string, unknown>);
+  }
+
+  async getRigging(id: string): Promise<MeshyTask> {
+    return this.request("GET", `/openapi/v1/rigging/${id}`);
+  }
+
+  async deleteRigging(id: string): Promise<void> {
+    await this.request("DELETE", `/openapi/v1/rigging/${id}`);
+  }
+
   // --- Text to Image ---
 
   async createTextToImage(params: {

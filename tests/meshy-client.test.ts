@@ -200,6 +200,54 @@ describe("MeshyClient", () => {
       expect(headers["Content-Type"]).toBe("application/json");
     });
 
+    it("createRigging sends POST with params", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ result: "rig-task-1" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.createRigging({
+        input_task_id: "task-abc",
+        height_meters: 1.8,
+      });
+
+      expect(res.result).toBe("rig-task-1");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/rigging",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ input_task_id: "task-abc", height_meters: 1.8 }),
+        })
+      );
+    });
+
+    it("getRigging sends GET", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ id: "rig-1", status: "SUCCEEDED" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.getRigging("rig-1");
+
+      expect(res.status).toBe("SUCCEEDED");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/rigging/rig-1",
+        expect.objectContaining({ method: "GET" })
+      );
+    });
+
+    it("deleteRigging sends DELETE", async () => {
+      mockFetch(async () => new Response(null, { status: 204 }));
+
+      const client = new MeshyClient("test-key");
+      await client.deleteRigging("rig-1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/rigging/rig-1",
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
     it("createTextTo3D sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "task-abc" }), { status: 200 })
