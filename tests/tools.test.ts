@@ -1131,5 +1131,20 @@ describe("MCP Tools", () => {
         if (originalKey) process.env.MESHY_API_KEY = originalKey;
       }
     });
+
+    it("reads API key from environment variable", () => {
+      const originalKey = process.env.MESHY_API_KEY;
+      process.env.MESHY_API_KEY = "env-test-key";
+      try {
+        const server = createServer();
+        expect(server).toBeDefined();
+      } finally {
+        if (originalKey) {
+          process.env.MESHY_API_KEY = originalKey;
+        } else {
+          delete process.env.MESHY_API_KEY;
+        }
+      }
+    });
   });
 });

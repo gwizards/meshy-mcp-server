@@ -154,7 +154,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse text_to_3d_get with this ID to check progress.` }] };
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "text_to_3d" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -238,7 +238,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse image_to_3d_get with this ID to check progress.` }] };
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "image_to_3d" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -319,7 +319,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse multi_image_to_3d_get with this ID to check progress.` }] };
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "multi_image_to_3d" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -396,7 +396,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Remesh task created. ID: ${result.result}\n\nUse remesh_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Remesh task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "remesh" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -477,7 +477,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Retexture task created. ID: ${result.result}\n\nUse retexture_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Retexture task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "retexture" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -550,7 +550,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Rigging task created. ID: ${result.result}\n\nUse rigging_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Rigging task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "rigging" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -607,7 +607,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Animation task created. ID: ${result.result}\n\nUse animation_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Animation task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "animation" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -661,7 +661,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse text_to_image_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "text_to_image" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -731,7 +731,7 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse image_to_image_get to check progress.` }] };
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "image_to_image" and this ID to wait for completion.` }] };
       } catch (error) {
         return errorResult(error);
       }
