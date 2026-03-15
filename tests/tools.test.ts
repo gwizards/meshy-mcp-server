@@ -27,6 +27,33 @@ describe("MCP Tools", () => {
     await client.connect(clientTransport);
   });
 
+  // --- ID validation ---
+
+  it("returns validation error for malicious task ID", async () => {
+    const result = await client.callTool({
+      name: "text_to_3d_get",
+      arguments: { id: "../../v1/balance" },
+    });
+    expect(result.isError).toBe(true);
+  });
+
+  // --- Result field validation ---
+
+  it("returns error when API response has no result field", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ id: "task-123" }), { status: 200 })
+    );
+
+    const result = await client.callTool({
+      name: "text_to_3d_create",
+      arguments: { mode: "preview", prompt: "a car" },
+    });
+
+    expect(result.isError).toBe(true);
+    const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+    expect(text).toContain("Unexpected");
+  });
+
   // --- Error handling ---
 
   describe("error handling", () => {
@@ -471,6 +498,24 @@ describe("MCP Tools", () => {
       expect(result.isError).toBeFalsy();
     });
 
+    it("returns validation error when page_num is 0", async () => {
+      const result = await client.callTool({
+        name: "text_to_3d_list",
+        arguments: { page_num: 0, page_size: 10 },
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns validation error when page_size is 0", async () => {
+      const result = await client.callTool({
+        name: "text_to_3d_list",
+        arguments: { page_num: 1, page_size: 0 },
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
     it("text_to_3d_list passes sort_by parameter", async () => {
       const spy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(JSON.stringify([]), { status: 200 })
@@ -662,9 +707,37 @@ describe("MCP Tools", () => {
     });
   });
 
+  // --- Animation validation ---
+
+  describe("animation_create validation", () => {
+    it("returns error when change_fps is missing fps", async () => {
+      const result = await client.callTool({
+        name: "animation_create",
+        arguments: {
+          rig_task_id: "rig-1",
+          action_id: 0,
+          post_process: { operation_type: "change_fps" },
+        },
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("fps");
+    });
+  });
+
   // --- wait_for_task ---
 
   describe("wait_for_task", () => {
+    it("returns error for unknown task_type", async () => {
+      const result = await client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "unknown_type", task_id: "task-1" },
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
     it("polls until task succeeds", async () => {
       vi.useFakeTimers();
       let calls = 0;

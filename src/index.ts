@@ -5,7 +5,7 @@ import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MeshyClient } from "./meshy-client.js";
+import { MeshyClient, MeshyTask, TASK_TYPES } from "./meshy-client.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
@@ -29,7 +29,7 @@ function validationError(message: string) {
   };
 }
 
-function formatTaskResponse(task: Record<string, unknown>): string {
+function formatTaskResponse(task: MeshyTask): string {
   const lines: string[] = [];
   lines.push(`Status: ${task.status}`);
 
@@ -39,14 +39,14 @@ function formatTaskResponse(task: Record<string, unknown>): string {
   if (task.prompt) {
     lines.push(`Prompt: ${task.prompt}`);
   }
-  if (task.task_error && typeof task.task_error === "object" && (task.task_error as Record<string, unknown>).message) {
-    lines.push(`Error: ${(task.task_error as Record<string, unknown>).message}`);
+  if (task.task_error?.message) {
+    lines.push(`Error: ${task.task_error.message}`);
   }
 
   if (task.status === "SUCCEEDED") {
-    if (task.model_urls && typeof task.model_urls === "object") {
+    if (task.model_urls) {
       lines.push("\nDownload URLs:");
-      for (const [format, url] of Object.entries(task.model_urls as Record<string, string>)) {
+      for (const [format, url] of Object.entries(task.model_urls)) {
         lines.push(`  ${format}: ${url}`);
       }
     }
@@ -116,6 +116,8 @@ export function createServer(apiKey?: string): McpServer {
     version,
   });
 
+  const taskId = z.string().regex(/^[a-zA-Z0-9_-]+$/, "Invalid task ID format").max(100).describe("Task ID");
+
   // --- Text to 3D ---
 
   server.tool(
@@ -145,6 +147,9 @@ export function createServer(apiKey?: string): McpServer {
           return validationError("preview_task_id is required for refine mode");
         }
         const result = await client.createTextTo3D(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse text_to_3d_get with this ID to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -154,14 +159,14 @@ export function createServer(apiKey?: string): McpServer {
 
   server.tool(
     "text_to_3d_get",
-    "Check the status of a text-to-3D task. Poll this until status is SUCCEEDED.",
+    "Check the status of a text-to-3D task. Use wait_for_task to poll until complete.",
     {
-      id: z.string().describe("Task ID"),
+      id: taskId,
     },
     async ({ id }) => {
       try {
         const task = await client.getTextTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -189,7 +194,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "text_to_3d_delete",
     "Delete a text-to-3D task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteTextTo3D(id);
@@ -222,6 +227,9 @@ export function createServer(apiKey?: string): McpServer {
     async (params) => {
       try {
         const result = await client.createImageTo3D(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse image_to_3d_get with this ID to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -232,11 +240,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_3d_get",
     "Check the status of an image-to-3D task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getImageTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -264,7 +272,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_3d_delete",
     "Delete an image-to-3D task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteImageTo3D(id);
@@ -293,6 +301,9 @@ export function createServer(apiKey?: string): McpServer {
     async (params) => {
       try {
         const result = await client.createMultiImageTo3D(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse multi_image_to_3d_get with this ID to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -303,11 +314,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "multi_image_to_3d_get",
     "Check the status of a multi-image-to-3D task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getMultiImageTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -335,7 +346,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "multi_image_to_3d_delete",
     "Delete a multi-image-to-3D task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteMultiImageTo3D(id);
@@ -367,6 +378,9 @@ export function createServer(apiKey?: string): McpServer {
           return validationError("Either input_task_id or model_url is required");
         }
         const result = await client.createRemesh(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Remesh task created. ID: ${result.result}\n\nUse remesh_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -377,11 +391,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "remesh_get",
     "Check the status of a remesh task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getRemesh(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -409,7 +423,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "remesh_delete",
     "Delete a remesh task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteRemesh(id);
@@ -445,6 +459,9 @@ export function createServer(apiKey?: string): McpServer {
           return validationError("Either text_style_prompt or image_style_url is required");
         }
         const result = await client.createRetexture(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Retexture task created. ID: ${result.result}\n\nUse retexture_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -455,11 +472,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "retexture_get",
     "Check the status of a retexture task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getRetexture(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -487,7 +504,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "retexture_delete",
     "Delete a retexture task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteRetexture(id);
@@ -515,6 +532,9 @@ export function createServer(apiKey?: string): McpServer {
           return validationError("Either input_task_id or model_url is required");
         }
         const result = await client.createRigging(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Rigging task created. ID: ${result.result}\n\nUse rigging_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -525,11 +545,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "rigging_get",
     "Check the status of a rigging task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getRigging(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -539,7 +559,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "rigging_delete",
     "Delete a rigging task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteRigging(id);
@@ -565,7 +585,13 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
+        if (params.post_process?.operation_type === "change_fps" && params.post_process.fps == null) {
+          return validationError("fps is required when operation_type is 'change_fps'");
+        }
         const result = await client.createAnimation(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Animation task created. ID: ${result.result}\n\nUse animation_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -576,11 +602,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "animation_get",
     "Check the status of an animation task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getAnimation(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -590,7 +616,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "animation_delete",
     "Delete an animation task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteAnimation(id);
@@ -617,6 +643,9 @@ export function createServer(apiKey?: string): McpServer {
     async (params) => {
       try {
         const result = await client.createTextToImage(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse text_to_image_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -627,11 +656,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "text_to_image_get",
     "Check the status of a text-to-image task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getTextToImage(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -659,7 +688,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "text_to_image_delete",
     "Delete a text-to-image task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteTextToImage(id);
@@ -684,6 +713,9 @@ export function createServer(apiKey?: string): McpServer {
     async (params) => {
       try {
         const result = await client.createImageToImage(params);
+        if (!result?.result) {
+          return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
+        }
         return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse image_to_image_get to check progress.` }] };
       } catch (error) {
         return errorResult(error);
@@ -694,11 +726,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_image_get",
     "Check the status of an image-to-image task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         const task = await client.getImageToImage(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -726,7 +758,7 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_image_delete",
     "Delete an image-to-image task.",
-    { id: z.string().describe("Task ID") },
+    { id: taskId },
     async ({ id }) => {
       try {
         await client.deleteImageToImage(id);
@@ -743,8 +775,8 @@ export function createServer(apiKey?: string): McpServer {
     "wait_for_task",
     "Poll a task until it reaches a terminal state (SUCCEEDED, FAILED, or CANCELED). Returns the final task result with download URLs. Use this instead of manually calling _get in a loop.",
     {
-      task_type: z.enum(["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image", "rigging", "animation", "image_to_image"]).describe("The type of task to poll"),
-      task_id: z.string().describe("Task ID to poll"),
+      task_type: z.enum(TASK_TYPES).describe("The type of task to poll"),
+      task_id: taskId.describe("Task ID to poll"),
       poll_interval: z.number().int().min(2).max(30).default(5).optional().describe("Seconds between polls (default 5)"),
       timeout: z.number().int().min(10).max(600).default(300).optional().describe("Maximum seconds to wait (default 300)"),
     },
@@ -755,7 +787,7 @@ export function createServer(apiKey?: string): McpServer {
         const startTime = Date.now();
 
         while (true) {
-          const task = await client.getTask(params.task_type, params.task_id) as Record<string, unknown>;
+          const task = await client.getTask(params.task_type, params.task_id);
 
           if (task.status === "SUCCEEDED") {
             return { content: [{ type: "text", text: formatTaskResponse(task) }] };
@@ -767,14 +799,15 @@ export function createServer(apiKey?: string): McpServer {
             };
           }
 
-          if (Date.now() - startTime >= maxTime) {
+          const elapsed = Date.now() - startTime;
+          if (elapsed >= maxTime) {
             return {
               content: [{ type: "text", text: `Timed out after ${params.timeout ?? 300}s. Last status: ${task.status}, progress: ${task.progress}%` }],
               isError: true,
             };
           }
 
-          await new Promise((resolve) => setTimeout(resolve, interval));
+          await new Promise((resolve) => setTimeout(resolve, Math.min(interval, maxTime - elapsed)));
         }
       } catch (error) {
         return errorResult(error);

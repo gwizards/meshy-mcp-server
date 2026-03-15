@@ -16,6 +16,9 @@ export interface MeshyTask {
   [key: string]: unknown;
 }
 
+export const TASK_TYPES = ["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image", "rigging", "animation", "image_to_image"] as const;
+export type TaskType = typeof TASK_TYPES[number];
+
 export class MeshyClient {
   private apiKey: string;
 
@@ -339,7 +342,7 @@ export class MeshyClient {
 
   // --- Generic task getter (for polling) ---
 
-  async getTask(taskType: string, id: string): Promise<MeshyTask> {
+  async getTask(taskType: TaskType, id: string): Promise<MeshyTask> {
     const pathMap: Record<string, string> = {
       text_to_3d: "/openapi/v2/text-to-3d",
       image_to_3d: "/openapi/v1/image-to-3d",
