@@ -16,12 +16,6 @@ export interface MeshyTask {
   [key: string]: unknown;
 }
 
-export interface PaginatedTasks {
-  tasks: MeshyTask[];
-  page_num: number;
-  page_size: number;
-}
-
 export class MeshyClient {
   private apiKey: string;
 
@@ -38,14 +32,25 @@ export class MeshyClient {
     const retryableStatuses = new Set([429, 500, 502, 503, 504]);
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      const res = await fetch(`${BASE_URL}${path}`, {
-        method,
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      let res: Response;
+
+      try {
+        res = await fetch(`${BASE_URL}${path}`, {
+          method,
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            ...(body ? { "Content-Type": "application/json" } : {}),
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch (networkError) {
+        if (attempt < maxRetries) {
+          const delay = Math.pow(2, attempt) * 1000;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw networkError;
+      }
 
       if (!res.ok) {
         const text = await res.text();

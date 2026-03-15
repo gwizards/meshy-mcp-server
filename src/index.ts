@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { fileURLToPath } from "url";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -491,10 +492,8 @@ export function createServer(apiKey?: string): McpServer {
 }
 
 // Only start the server when run directly (not when imported for tests)
-if (process.argv[1] && (
-  import.meta.url.endsWith(process.argv[1]) ||
-  import.meta.url === `file://${process.argv[1]}`
-)) {
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
   const server = createServer();
   const transport = new StdioServerTransport();
   server.connect(transport).catch((err) => {

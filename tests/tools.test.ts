@@ -27,14 +27,20 @@ describe("MCP Tools", () => {
 
   describe("error handling", () => {
     it("returns isError when API call fails with network error", async () => {
+      vi.useFakeTimers();
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
         new Error("Network failure")
       );
 
-      const result = await client.callTool({
+      const resultPromise = client.callTool({
         name: "get_balance",
         arguments: {},
       });
+
+      // Advance past retry delays (1s + 2s + 4s)
+      await vi.advanceTimersByTimeAsync(10000);
+      const result = await resultPromise;
+      vi.useRealTimers();
 
       expect(result.isError).toBe(true);
       const text = (result.content as Array<{ type: string; text: string }>)[0]
