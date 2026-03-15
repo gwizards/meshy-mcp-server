@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.3] - 2026-03-15
+
+### Changed
+- Removed raw JSON dump from task responses to reduce token usage in LLM contexts
+- List tool responses now show structured summaries (ID, status, progress, prompt) instead of raw JSON
+- Extracted shared `RESOURCE_PATHS` constant to eliminate duplicate API path definitions
+- Moved `RETRYABLE_STATUSES` set to module level (avoids re-creation per request)
+- Removed ephemeral planning docs from repository
+
+## [1.2.2] - 2026-03-15
+
+### Fixed
+- Task ID regex validation now applied to body-field IDs (`preview_task_id`, `input_task_id`, `rig_task_id`) for consistency
+- `MeshyTask` interface now has explicit `result?` field instead of relying on index signature
+- `getTask()` path map typed as `Record<TaskType, string>` for compile-time exhaustiveness
+- Renamed `formatTask` to `formatListItem` for clarity vs `formatTaskResponse`
+
+### Changed
+- Documented that rigging and animation lack list tools (Meshy API does not expose list endpoints for these types)
+
+## [1.2.1] - 2026-03-15
+
+### Fixed
+- All `_create` tool responses now reference `wait_for_task` instead of individual `_get` tools
+- Expanded test coverage for `wait_for_task` across all task types, validation boundaries, and `createServer`
+
 ## [1.2.0] - 2026-03-15
 
 ### Added

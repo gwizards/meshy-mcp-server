@@ -10,8 +10,16 @@ import { MeshyClient, MeshyTask, TASK_TYPES } from "./meshy-client.js";
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
 
-function formatTask(task: unknown): string {
-  return JSON.stringify(task, null, 2);
+function formatListResponse(tasks: MeshyTask[]): string {
+  if (tasks.length === 0) return "No tasks found.";
+  const lines = [`Found ${tasks.length} task(s):\n`];
+  for (const task of tasks) {
+    const parts = [`- ${task.id}: ${task.status}`];
+    if (typeof task.progress === "number") parts.push(`(${task.progress}%)`);
+    if (task.prompt) parts.push(`— "${task.prompt}"`);
+    lines.push(parts.join(" "));
+  }
+  return lines.join("\n");
 }
 
 function errorResult(error: unknown) {
@@ -63,7 +71,7 @@ function formatTaskResponse(task: MeshyTask): string {
     }
     // Rigging results
     if (task.result && typeof task.result === "object") {
-      const result = task.result as Record<string, unknown>;
+      const result = task.result;
       if (result.rigged_character_glb_url) {
         lines.push("\nRigged Model:");
         lines.push(`  GLB: ${result.rigged_character_glb_url}`);
@@ -100,7 +108,6 @@ function formatTaskResponse(task: MeshyTask): string {
     }
   }
 
-  lines.push(`\nFull response:\n${JSON.stringify(task, null, 2)}`);
   return lines.join("\n");
 }
 
@@ -126,7 +133,7 @@ export function createServer(apiKey?: string): McpServer {
     {
       mode: z.enum(["preview", "refine"]).describe("'preview' for initial generation, 'refine' to enhance a preview"),
       prompt: z.string().max(600).optional().describe("Text description of the 3D model (required for preview mode)"),
-      preview_task_id: z.string().optional().describe("Task ID from a completed preview (required for refine mode)"),
+      preview_task_id: taskId.optional().describe("Task ID from a completed preview (required for refine mode)"),
       art_style: z.string().optional().describe("Art style for the model"),
       negative_prompt: z.string().optional().describe("What to avoid in generation"),
       ai_model: z.string().optional().describe("AI model to use (e.g. 'meshy-6')"),
@@ -188,7 +195,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listTextTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -270,7 +277,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -351,7 +358,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listMultiImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -378,7 +385,7 @@ export function createServer(apiKey?: string): McpServer {
     "remesh_create",
     "Remesh and export a 3D model into various formats (glb, fbx, obj, usdz, blend, stl). Provide either input_task_id or model_url.",
     {
-      input_task_id: z.string().optional().describe("Task ID from a completed generation task"),
+      input_task_id: taskId.optional().describe("Task ID from a completed generation task"),
       model_url: z.string().optional().describe("URL to a 3D model file"),
       target_formats: z.array(z.string()).optional().describe("Output formats: glb, fbx, obj, usdz, blend, stl"),
       topology: z.string().optional().describe("'quad' or 'triangle'"),
@@ -428,7 +435,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listRemesh(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -455,7 +462,7 @@ export function createServer(apiKey?: string): McpServer {
     "retexture_create",
     "Apply new textures to a 3D model. Provide either input_task_id or model_url, and either text_style_prompt or image_style_url.",
     {
-      input_task_id: z.string().optional().describe("Task ID from a completed generation task"),
+      input_task_id: taskId.optional().describe("Task ID from a completed generation task"),
       model_url: z.string().optional().describe("URL to a 3D model file"),
       text_style_prompt: z.string().max(600).optional().describe("Text description of desired texture style"),
       image_style_url: z.string().optional().describe("2D image URL for texture style reference"),
@@ -509,7 +516,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listRetexture(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -530,13 +537,13 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  // --- Rigging ---
+  // --- Rigging (no list endpoint in Meshy API) ---
 
   server.tool(
     "rigging_create",
     "Auto-rig a humanoid 3D model for animation. Requires GLB format, max 300k faces (use remesh first if over). Provide either input_task_id or model_url.",
     {
-      input_task_id: z.string().optional().describe("Task ID from a completed generation task"),
+      input_task_id: taskId.optional().describe("Task ID from a completed generation task"),
       model_url: z.string().optional().describe("URL to a GLB model file (must be GLB format)"),
       height_meters: z.number().positive().optional().describe("Character height in meters (default 1.7)"),
       texture_image_url: z.string().optional().describe("PNG texture image URL for the model"),
@@ -585,13 +592,13 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  // --- Animation ---
+  // --- Animation (no list endpoint in Meshy API) ---
 
   server.tool(
     "animation_create",
     "Apply an animation to a rigged model. Requires a completed rigging task. Common categories: DailyActions (0=Idle), WalkAndRun (1=Walking), Fighting (4=Attack), Dancing (22-24), BodyMovements. See Meshy animation library for full list of 500+ action IDs.",
     {
-      rig_task_id: z.string().describe("Task ID from a completed rigging task"),
+      rig_task_id: taskId.describe("Task ID from a completed rigging task"),
       action_id: z.number().int().min(0).describe("Animation ID from the Meshy animation library"),
       post_process: z.object({
         operation_type: z.enum(["change_fps", "fbx2usdz", "extract_armature"]).describe("Post-processing operation"),
@@ -693,7 +700,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listTextToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -763,7 +770,7 @@ export function createServer(apiKey?: string): McpServer {
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listImageToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatTask(tasks) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
       } catch (error) {
         return errorResult(error);
       }
