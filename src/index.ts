@@ -513,6 +513,57 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
+  // --- Animation ---
+
+  server.tool(
+    "animation_create",
+    "Apply an animation to a rigged model. Requires a completed rigging task. Common categories: DailyActions (0=Idle), WalkAndRun (1=Walking), Fighting (4=Attack), Dancing (22-24), BodyMovements. See Meshy animation library for full list of 500+ action IDs.",
+    {
+      rig_task_id: z.string().describe("Task ID from a completed rigging task"),
+      action_id: z.number().int().min(0).describe("Animation ID from the Meshy animation library"),
+      post_process: z.object({
+        operation_type: z.enum(["change_fps", "fbx2usdz", "extract_armature"]).describe("Post-processing operation"),
+        fps: z.union([z.literal(24), z.literal(25), z.literal(30), z.literal(60)]).optional().describe("Target FPS (for change_fps only, default 30)"),
+      }).optional().describe("Optional post-processing for the animation output"),
+    },
+    async (params) => {
+      try {
+        const result = await client.createAnimation(params);
+        return { content: [{ type: "text", text: `Animation task created. ID: ${result.result}\n\nUse animation_get to check progress.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "animation_get",
+    "Check the status of an animation task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        const task = await client.getAnimation(id);
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "animation_delete",
+    "Delete an animation task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        await client.deleteAnimation(id);
+        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
   // --- Text to Image ---
 
   server.tool(

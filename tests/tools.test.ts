@@ -227,6 +227,52 @@ describe("MCP Tools", () => {
     });
   });
 
+  // --- Animation ---
+
+  describe("animation_create", () => {
+    it("succeeds with required params", async () => {
+      const result = await client.callTool({
+        name: "animation_create",
+        arguments: { rig_task_id: "rig-1", action_id: 0 },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("task-123");
+    });
+
+    it("succeeds with post_process params", async () => {
+      const result = await client.callTool({
+        name: "animation_create",
+        arguments: {
+          rig_task_id: "rig-1",
+          action_id: 92,
+          post_process: { operation_type: "change_fps", fps: 60 },
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+    });
+
+    it("returns error when rig_task_id is missing", async () => {
+      const result = await client.callTool({
+        name: "animation_create",
+        arguments: { action_id: 0 },
+      });
+
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when action_id is missing", async () => {
+      const result = await client.callTool({
+        name: "animation_create",
+        arguments: { rig_task_id: "rig-1" },
+      });
+
+      expect(result.isError).toBe(true);
+    });
+  });
+
   // --- Balance ---
 
   describe("get_balance", () => {
@@ -336,6 +382,7 @@ describe("MCP Tools", () => {
       "retexture_get",
       "text_to_image_get",
       "rigging_get",
+      "animation_get",
     ])("%s returns task data", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(
@@ -405,6 +452,7 @@ describe("MCP Tools", () => {
       "retexture_delete",
       "text_to_image_delete",
       "rigging_delete",
+      "animation_delete",
     ])("%s confirms deletion", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(null, { status: 204 })
