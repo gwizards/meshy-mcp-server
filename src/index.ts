@@ -461,6 +461,58 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
+  // --- Rigging ---
+
+  server.tool(
+    "rigging_create",
+    "Auto-rig a humanoid 3D model for animation. Requires GLB format, max 300k faces (use remesh first if over). Provide either input_task_id or model_url.",
+    {
+      input_task_id: z.string().optional().describe("Task ID from a completed generation task"),
+      model_url: z.string().optional().describe("URL to a GLB model file (must be GLB format)"),
+      height_meters: z.number().positive().optional().describe("Character height in meters (default 1.7)"),
+      texture_image_url: z.string().optional().describe("PNG texture image URL for the model"),
+    },
+    async (params) => {
+      try {
+        if (!params.input_task_id && !params.model_url) {
+          return validationError("Either input_task_id or model_url is required");
+        }
+        const result = await client.createRigging(params);
+        return { content: [{ type: "text", text: `Rigging task created. ID: ${result.result}\n\nUse rigging_get to check progress.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "rigging_get",
+    "Check the status of a rigging task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        const task = await client.getRigging(id);
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "rigging_delete",
+    "Delete a rigging task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        await client.deleteRigging(id);
+        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
   // --- Text to Image ---
 
   server.tool(

@@ -192,6 +192,41 @@ describe("MCP Tools", () => {
     });
   });
 
+  // --- Rigging validation ---
+
+  describe("rigging_create validation", () => {
+    it("returns validation error when neither input_task_id nor model_url provided", async () => {
+      const result = await client.callTool({
+        name: "rigging_create",
+        arguments: {},
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("input_task_id");
+    });
+
+    it("succeeds with input_task_id", async () => {
+      const result = await client.callTool({
+        name: "rigging_create",
+        arguments: { input_task_id: "task-abc" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("task-123");
+    });
+
+    it("succeeds with model_url", async () => {
+      const result = await client.callTool({
+        name: "rigging_create",
+        arguments: { model_url: "https://example.com/model.glb" },
+      });
+
+      expect(result.isError).toBeFalsy();
+    });
+  });
+
   // --- Balance ---
 
   describe("get_balance", () => {
@@ -300,6 +335,7 @@ describe("MCP Tools", () => {
       "remesh_get",
       "retexture_get",
       "text_to_image_get",
+      "rigging_get",
     ])("%s returns task data", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(
@@ -368,6 +404,7 @@ describe("MCP Tools", () => {
       "remesh_delete",
       "retexture_delete",
       "text_to_image_delete",
+      "rigging_delete",
     ])("%s confirms deletion", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(null, { status: 204 })
