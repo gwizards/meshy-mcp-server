@@ -285,4 +285,83 @@ describe("MCP Tools", () => {
       expect(result.isError).toBeFalsy();
     });
   });
+
+  // --- Parameterized get/list/delete coverage ---
+
+  describe("get tools", () => {
+    it.each([
+      "text_to_3d_get",
+      "image_to_3d_get",
+      "multi_image_to_3d_get",
+      "remesh_get",
+      "retexture_get",
+      "text_to_image_get",
+    ])("%s returns task data", async (toolName) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(
+          JSON.stringify({ id: "task-1", status: "SUCCEEDED", progress: 100 }),
+          { status: 200 }
+        )
+      );
+
+      const result = await client.callTool({
+        name: toolName,
+        arguments: { id: "task-1" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0]
+        .text;
+      expect(text).toContain("SUCCEEDED");
+    });
+  });
+
+  describe("list tools", () => {
+    it.each([
+      "text_to_3d_list",
+      "image_to_3d_list",
+      "multi_image_to_3d_list",
+      "remesh_list",
+      "retexture_list",
+      "text_to_image_list",
+    ])("%s returns paginated results", async (toolName) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify([{ id: "task-1", status: "SUCCEEDED" }]), {
+          status: 200,
+        })
+      );
+
+      const result = await client.callTool({
+        name: toolName,
+        arguments: { page_num: 1, page_size: 10 },
+      });
+
+      expect(result.isError).toBeFalsy();
+    });
+  });
+
+  describe("delete tools", () => {
+    it.each([
+      "text_to_3d_delete",
+      "image_to_3d_delete",
+      "multi_image_to_3d_delete",
+      "remesh_delete",
+      "retexture_delete",
+      "text_to_image_delete",
+    ])("%s confirms deletion", async (toolName) => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(null, { status: 204 })
+      );
+
+      const result = await client.callTool({
+        name: toolName,
+        arguments: { id: "task-1" },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0]
+        .text;
+      expect(text).toContain("deleted");
+    });
+  });
 });

@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { MeshyClient } from "./meshy-client.js";
+
+const require = createRequire(import.meta.url);
+const { version } = require("../package.json");
 
 function formatTask(task: unknown): string {
   return JSON.stringify(task, null, 2);
@@ -34,7 +38,7 @@ export function createServer(apiKey?: string): McpServer {
   const client = new MeshyClient(key);
   const server = new McpServer({
     name: "meshy",
-    version: "1.0.0",
+    version,
   });
 
   // --- Text to 3D ---
@@ -53,6 +57,8 @@ export function createServer(apiKey?: string): McpServer {
       target_polycount: z.number().optional().describe("Target polygon count"),
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
       texture_prompt: z.string().optional().describe("Additional texture description"),
+      symmetry_mode: z.string().optional().describe("Symmetry mode for the model"),
+      texture_image_url: z.string().optional().describe("Reference image URL for texture"),
     },
     async (params) => {
       try {
@@ -90,8 +96,8 @@ export function createServer(apiKey?: string): McpServer {
     "text_to_3d_list",
     "List text-to-3D tasks with pagination.",
     {
-      page_num: z.number().default(1).describe("Page number"),
-      page_size: z.number().max(50).default(10).describe("Items per page (max 50)"),
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -123,14 +129,17 @@ export function createServer(apiKey?: string): McpServer {
     "image_to_3d_create",
     "Generate a 3D model from a single image. The image_url must be publicly accessible or a base64 data URI.",
     {
-      image_url: z.string().describe("Publicly accessible image URL or base64 data URI"),
+      image_url: z.string().min(1).describe("Publicly accessible image URL or base64 data URI"),
       ai_model: z.string().optional().describe("AI model to use"),
+      model_type: z.string().optional().describe("Model type for generation"),
       topology: z.string().optional().describe("'quad' or 'triangle'"),
       target_polycount: z.number().optional().describe("Target polygon count"),
+      symmetry_mode: z.string().optional().describe("Symmetry mode for the model"),
       should_remesh: z.boolean().optional().describe("Whether to remesh the output"),
       should_texture: z.boolean().optional().describe("Whether to generate textures"),
       enable_pbr: z.boolean().optional().describe("Enable PBR textures"),
       texture_prompt: z.string().optional().describe("Additional texture description"),
+      texture_image_url: z.string().optional().describe("Reference image URL for texture"),
     },
     async (params) => {
       try {
@@ -160,8 +169,8 @@ export function createServer(apiKey?: string): McpServer {
     "image_to_3d_list",
     "List image-to-3D tasks.",
     {
-      page_num: z.number().default(1),
-      page_size: z.number().max(50).default(10),
+      page_num: z.number().int().min(1).default(1),
+      page_size: z.number().int().min(1).max(50).default(10),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -229,8 +238,8 @@ export function createServer(apiKey?: string): McpServer {
     "multi_image_to_3d_list",
     "List multi-image-to-3D tasks.",
     {
-      page_num: z.number().default(1),
-      page_size: z.number().max(50).default(10),
+      page_num: z.number().int().min(1).default(1),
+      page_size: z.number().int().min(1).max(50).default(10),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -302,8 +311,8 @@ export function createServer(apiKey?: string): McpServer {
     "remesh_list",
     "List remesh tasks.",
     {
-      page_num: z.number().default(1),
-      page_size: z.number().max(50).default(10),
+      page_num: z.number().int().min(1).default(1),
+      page_size: z.number().int().min(1).max(50).default(10),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -378,8 +387,8 @@ export function createServer(apiKey?: string): McpServer {
     "retexture_list",
     "List retexture tasks.",
     {
-      page_num: z.number().default(1),
-      page_size: z.number().max(50).default(10),
+      page_num: z.number().int().min(1).default(1),
+      page_size: z.number().int().min(1).max(50).default(10),
     },
     async ({ page_num, page_size }) => {
       try {
@@ -445,8 +454,8 @@ export function createServer(apiKey?: string): McpServer {
     "text_to_image_list",
     "List text-to-image tasks.",
     {
-      page_num: z.number().default(1),
-      page_size: z.number().max(50).default(10),
+      page_num: z.number().int().min(1).default(1),
+      page_size: z.number().int().min(1).max(50).default(10),
     },
     async ({ page_num, page_size }) => {
       try {

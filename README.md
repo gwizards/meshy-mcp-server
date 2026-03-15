@@ -24,7 +24,7 @@ Ask Claude to "create a 3D model of a medieval castle" and it will handle the en
 ## Installation
 
 ```bash
-git clone https://github.com/your-username/meshy-mcp-server.git
+git clone https://github.com/gwizards/meshy-mcp-server.git
 cd meshy-mcp-server
 npm install
 npm run build

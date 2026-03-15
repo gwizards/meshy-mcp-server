@@ -10,16 +10,16 @@
 ## Architecture
 
 Two source files:
-- `src/index.ts` — MCP server setup, tool registration, validation, error handling
+- `src/index.ts` — MCP server setup, tool registration, validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
 - `src/meshy-client.ts` — Meshy API HTTP client with retry logic
 
 ## Key Patterns
 
 - All tool handlers wrap in try-catch and return `{ isError: true }` on failure
-- `MeshyClient.request()` retries transient errors (429, 5xx) with exponential backoff (1s, 2s, 4s)
-- Zod validates all tool inputs at the MCP layer
+- `MeshyClient.request()` retries transient errors (429, 5xx) and network errors with exponential backoff (1s, 2s, 4s)
+- Zod validates all tool inputs at the MCP layer (including `.int().min(1)` on pagination)
 - Conditional validation in create tools (e.g., prompt required for preview mode)
-- `createServer(apiKey?)` is exported for testing — pass API key directly or it reads from `MESHY_API_KEY` env var
+- Content-Type header only sent when request body is present
 
 ## Environment
 
@@ -28,5 +28,5 @@ Two source files:
 ## Testing
 
 - Tests use vitest with `global.fetch` mocking
-- `tests/meshy-client.test.ts` — client retry/error tests
-- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport
+- `tests/meshy-client.test.ts` — client retry/error/header tests
+- `tests/tools.test.ts` — end-to-end MCP tool tests via InMemoryTransport (all 25 tools covered)

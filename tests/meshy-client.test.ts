@@ -1,10 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { MeshyClient } from "../src/meshy-client.js";
 
 describe("MeshyClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   function mockFetch(impl: () => Promise<Response>) {
@@ -101,28 +105,23 @@ describe("MeshyClient", () => {
       expect(caughtError?.message).toBe("fetch failed");
     });
 
-    it("retries on 502, 503, 504", async () => {
-      for (const status of [502, 503, 504]) {
-        vi.restoreAllMocks();
-        vi.useFakeTimers();
+    it.each([502, 503, 504])("retries on %i and succeeds", async (status) => {
+      let calls = 0;
+      mockFetch(async () => {
+        calls++;
+        if (calls === 1) {
+          return new Response("error", { status });
+        }
+        return new Response(JSON.stringify({ balance: 50 }), { status: 200 });
+      });
 
-        let calls = 0;
-        mockFetch(async () => {
-          calls++;
-          if (calls === 1) {
-            return new Response("error", { status });
-          }
-          return new Response(JSON.stringify({ balance: 50 }), { status: 200 });
-        });
+      const client = new MeshyClient("test-key");
+      const promise = client.getBalance();
+      await vi.advanceTimersByTimeAsync(1000);
+      const result = await promise;
 
-        const client = new MeshyClient("test-key");
-        const promise = client.getBalance();
-        await vi.advanceTimersByTimeAsync(1000);
-        const result = await promise;
-
-        expect(result.balance).toBe(50);
-        expect(calls).toBe(2);
-      }
+      expect(result.balance).toBe(50);
+      expect(calls).toBe(2);
     });
   });
 

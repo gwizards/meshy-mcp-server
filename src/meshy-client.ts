@@ -68,9 +68,10 @@ export class MeshyClient {
         return {} as T;
       }
 
-      return res.json() as Promise<T>;
+      return (await res.json()) as T;
     }
 
+    // Unreachable: loop always returns or throws, but TypeScript requires this
     throw new Error("Max retries exceeded");
   }
 
