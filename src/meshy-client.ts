@@ -57,9 +57,13 @@ export class MeshyClient {
 
         if (retryableStatuses.has(res.status) && attempt < maxRetries) {
           const retryAfter = res.headers.get("retry-after");
-          const delay = retryAfter
-            ? parseInt(retryAfter, 10) * 1000
-            : Math.pow(2, attempt) * 1000;
+          let delay = Math.pow(2, attempt) * 1000;
+          if (retryAfter) {
+            const seconds = Number(retryAfter);
+            if (Number.isFinite(seconds) && seconds > 0) {
+              delay = Math.min(seconds * 1000, 60000);
+            }
+          }
           await new Promise((resolve) => setTimeout(resolve, delay));
           continue;
         }
@@ -94,6 +98,7 @@ export class MeshyClient {
     enable_pbr?: boolean;
     texture_prompt?: string;
     texture_image_url?: string;
+    moderation?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v2/text-to-3d", params as Record<string, unknown>);
   }
@@ -104,7 +109,7 @@ export class MeshyClient {
 
   async listTextTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v2/text-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -126,6 +131,7 @@ export class MeshyClient {
     enable_pbr?: boolean;
     texture_prompt?: string;
     texture_image_url?: string;
+    moderation?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/image-to-3d", params as Record<string, unknown>);
   }
@@ -136,7 +142,7 @@ export class MeshyClient {
 
   async listImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/image-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -154,6 +160,7 @@ export class MeshyClient {
     should_remesh?: boolean;
     should_texture?: boolean;
     enable_pbr?: boolean;
+    moderation?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/multi-image-to-3d", params as Record<string, unknown>);
   }
@@ -164,7 +171,7 @@ export class MeshyClient {
 
   async listMultiImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/multi-image-to-3d?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -193,7 +200,7 @@ export class MeshyClient {
 
   async listRemesh(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/remesh?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -212,6 +219,7 @@ export class MeshyClient {
     enable_original_uv?: boolean;
     enable_pbr?: boolean;
     remove_lighting?: boolean;
+    moderation?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/retexture", params as Record<string, unknown>);
   }
@@ -222,7 +230,7 @@ export class MeshyClient {
 
   async listRetexture(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/retexture?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -278,6 +286,7 @@ export class MeshyClient {
     generate_multi_view?: boolean;
     pose_mode?: string;
     aspect_ratio?: string;
+    moderation?: boolean;
   }): Promise<{ result: string }> {
     return this.request("POST", "/openapi/v1/text-to-image", params as Record<string, unknown>);
   }
@@ -288,7 +297,7 @@ export class MeshyClient {
 
   async listTextToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/text-to-image?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
@@ -313,7 +322,7 @@ export class MeshyClient {
 
   async listImageToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
     let path = `/openapi/v1/image-to-image?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${sortBy}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
     return this.request("GET", path);
   }
 
