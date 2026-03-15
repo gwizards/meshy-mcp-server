@@ -273,6 +273,25 @@ describe("MCP Tools", () => {
     });
   });
 
+  // --- Image to Image ---
+
+  describe("image_to_image_create", () => {
+    it("succeeds with required params", async () => {
+      const result = await client.callTool({
+        name: "image_to_image_create",
+        arguments: {
+          ai_model: "nano-banana",
+          prompt: "make it blue",
+          reference_image_urls: ["https://example.com/ref.jpg"],
+        },
+      });
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("task-123");
+    });
+  });
+
   // --- Balance ---
 
   describe("get_balance", () => {
@@ -383,6 +402,7 @@ describe("MCP Tools", () => {
       "text_to_image_get",
       "rigging_get",
       "animation_get",
+      "image_to_image_get",
     ])("%s returns task data", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(
@@ -411,6 +431,7 @@ describe("MCP Tools", () => {
       "remesh_list",
       "retexture_list",
       "text_to_image_list",
+      "image_to_image_list",
     ])("%s returns paginated results", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(JSON.stringify([{ id: "task-1", status: "SUCCEEDED" }]), {
@@ -453,6 +474,7 @@ describe("MCP Tools", () => {
       "text_to_image_delete",
       "rigging_delete",
       "animation_delete",
+      "image_to_image_delete",
     ])("%s confirms deletion", async (toolName) => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
         new Response(null, { status: 204 })

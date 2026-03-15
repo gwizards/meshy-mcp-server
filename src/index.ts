@@ -633,6 +633,73 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
+  // --- Image to Image ---
+
+  server.tool(
+    "image_to_image_create",
+    "Transform and edit an existing image using reference images and a text prompt. Models: 'nano-banana' or 'nano-banana-pro'.",
+    {
+      ai_model: z.enum(["nano-banana", "nano-banana-pro"]).describe("AI model to use"),
+      prompt: z.string().describe("Text description of the desired transformation"),
+      reference_image_urls: z.array(z.string()).min(1).max(5).describe("Array of 1-5 reference image URLs (jpg, jpeg, png)"),
+      generate_multi_view: z.boolean().optional().describe("Generate multi-angle views"),
+    },
+    async (params) => {
+      try {
+        const result = await client.createImageToImage(params);
+        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse image_to_image_get to check progress.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "image_to_image_get",
+    "Check the status of an image-to-image task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        const task = await client.getImageToImage(id);
+        return { content: [{ type: "text", text: formatTaskResponse(task as Record<string, unknown>) }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "image_to_image_list",
+    "List image-to-image tasks.",
+    {
+      page_num: z.number().int().min(1).default(1).describe("Page number"),
+      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
+    },
+    async ({ page_num, page_size, sort_by }) => {
+      try {
+        const tasks = await client.listImageToImage(page_num, page_size, sort_by);
+        return { content: [{ type: "text", text: formatTask(tasks) }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
+  server.tool(
+    "image_to_image_delete",
+    "Delete an image-to-image task.",
+    { id: z.string().describe("Task ID") },
+    async ({ id }) => {
+      try {
+        await client.deleteImageToImage(id);
+        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
+      } catch (error) {
+        return errorResult(error);
+      }
+    }
+  );
+
   // --- Wait for Task ---
 
   server.tool(
