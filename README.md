@@ -14,6 +14,9 @@ Ask Claude to "create a 3D model of a medieval castle" and it will handle the en
 | **Remesh & Export** | Re-mesh models and export in glb, fbx, obj, usdz, blend, or stl |
 | **Retexture** | Apply new textures to existing 3D models via text or image style reference |
 | **Text to Image** | Generate images from text (useful as input for image-to-3D pipelines) |
+| **Rigging** | Auto-rig humanoid 3D models for animation (GLB format, max 300k faces) |
+| **Animation** | Apply 500+ animations to rigged models from the Meshy animation library |
+| **Image to Image** | Transform and edit images using reference images and text prompts |
 | **Balance** | Check your Meshy credit balance |
 
 ## Prerequisites
@@ -100,6 +103,14 @@ Combine text-to-image with image-to-3D for a fully text-driven pipeline:
 3. **Generate 3D from image** — `image_to_3d_create` with the resulting image URL
 4. **Wait for 3D model** — `wait_for_task` with `task_type: "image_to_3d"`
 
+### Rigging & Animation Pipeline
+
+1. **Generate 3D model** — any `_create` tool
+2. **Rig the model** — `rigging_create` with the task ID or model URL
+3. **Wait for rigging** — `wait_for_task` with `task_type: "rigging"`
+4. **Animate** — `animation_create` with the rigging task ID and action ID
+5. **Wait for animation** — `wait_for_task` with `task_type: "animation"`
+
 ### Example Prompts
 
 Once configured, you can ask Claude things like:
@@ -108,6 +119,8 @@ Once configured, you can ask Claude things like:
 - *"Create a medieval sword with PBR textures and export as FBX"*
 - *"Take this image and turn it into a 3D model"*
 - *"Retexture my model with a cyberpunk style"*
+- *"Rig this model and apply a walking animation"*
+- *"Transform this photo into a different style"*
 - *"How many credits do I have left?"*
 
 ## Available Tools
@@ -160,6 +173,28 @@ Once configured, you can ask Claude things like:
 | `text_to_image_list` | List tasks |
 | `text_to_image_delete` | Delete a task |
 
+### Rigging
+| Tool | Description |
+|------|-------------|
+| `rigging_create` | Auto-rig a humanoid 3D model (GLB, max 300k faces) |
+| `rigging_get` | Check rigging task status |
+| `rigging_delete` | Delete a rigging task |
+
+### Animation
+| Tool | Description |
+|------|-------------|
+| `animation_create` | Apply animation to a rigged model (500+ actions) |
+| `animation_get` | Check animation task status |
+| `animation_delete` | Delete an animation task |
+
+### Image to Image
+| Tool | Description |
+|------|-------------|
+| `image_to_image_create` | Transform images with text prompts and references |
+| `image_to_image_get` | Check task status |
+| `image_to_image_list` | List tasks |
+| `image_to_image_delete` | Delete a task |
+
 ### Workflow Helpers
 | Tool | Description |
 |------|-------------|
@@ -197,7 +232,7 @@ All tools return structured errors via MCP's `isError` flag instead of raw excep
 ```
 meshy-mcp-server/
 ├── src/
-│   ├── index.ts              # MCP server setup, 26 tool definitions, validation
+│   ├── index.ts              # MCP server setup, 36 tool definitions, validation
 │   └── meshy-client.ts       # Meshy API client with retry logic
 ├── tests/
 │   ├── meshy-client.test.ts  # Client retry/error tests
@@ -246,6 +281,9 @@ This server wraps the [Meshy API v1/v2](https://docs.meshy.ai/). Key endpoints u
 | `POST /openapi/v1/remesh` | `remesh_create` |
 | `POST /openapi/v1/retexture` | `retexture_create` |
 | `POST /openapi/v1/text-to-image` | `text_to_image_create` |
+| `POST /openapi/v1/rigging` | `rigging_create` |
+| `POST /openapi/v1/animations` | `animation_create` |
+| `POST /openapi/v1/image-to-image` | `image_to_image_create` |
 | `GET /openapi/v1/balance` | `get_balance` |
 
 ## License
