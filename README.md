@@ -286,6 +286,10 @@ This server wraps the [Meshy API v1/v2](https://docs.meshy.ai/). Key endpoints u
 | `POST /openapi/v1/image-to-image` | `image_to_image_create` |
 | `GET /openapi/v1/balance` | `get_balance` |
 
+## Credits
+
+Created by [Mr Polti](https://www.youtube.com/@MrPoltiOfficial) from [Wizards](https://www.wizards.us).
+
 ## License
 
 MIT
