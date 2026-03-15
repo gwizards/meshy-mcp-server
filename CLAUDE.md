@@ -11,7 +11,7 @@
 
 Two source files:
 - `src/index.ts` — MCP server setup, 36 tool definitions (34 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime.
-- `src/meshy-client.ts` — Meshy API HTTP client with retry logic and generic `getTask()` for polling
+- `src/meshy-client.ts` — Meshy API HTTP client with retry logic, generic `getTask()` for polling, exports `TaskType` union and `TASK_TYPES` const
 
 ## Key Patterns
 
@@ -19,10 +19,13 @@ Two source files:
 - `MeshyClient.request()` retries transient errors (429, 5xx) and network errors with exponential backoff
 - Retry logic respects `Retry-After` header on 429 responses
 - `wait_for_task` polls any task type until terminal state (SUCCEEDED/FAILED/CANCELED)
-- Get tool responses format completed tasks with extracted download URLs
+- Get tool responses format completed tasks with extracted download URLs via typed `MeshyTask`
 - Zod validates all tool inputs at the MCP layer (including `.int().min(1)` on pagination)
+- Task IDs validated with regex `/^[a-zA-Z0-9_-]+$/` and encoded with `encodeURIComponent()` in URL paths
+- Create handlers validate `result.result` exists before returning task ID
 - Conditional validation in create tools (e.g., prompt required for preview mode)
 - Content-Type header only sent when request body is present
+- Non-JSON API responses and empty bodies (on non-DELETE) throw descriptive errors
 
 ## Environment
 
