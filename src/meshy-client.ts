@@ -331,6 +331,9 @@ export class MeshyClient {
       remesh: "/openapi/v1/remesh",
       retexture: "/openapi/v1/retexture",
       text_to_image: "/openapi/v1/text-to-image",
+      rigging: "/openapi/v1/rigging",
+      animation: "/openapi/v1/animations",
+      image_to_image: "/openapi/v1/image-to-image",
     };
     const basePath = pathMap[taskType];
     if (!basePath) {

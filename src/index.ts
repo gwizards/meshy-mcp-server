@@ -706,7 +706,7 @@ export function createServer(apiKey?: string): McpServer {
     "wait_for_task",
     "Poll a task until it reaches a terminal state (SUCCEEDED, FAILED, or CANCELED). Returns the final task result with download URLs. Use this instead of manually calling _get in a loop.",
     {
-      task_type: z.enum(["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image"]).describe("The type of task to poll"),
+      task_type: z.enum(["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image", "rigging", "animation", "image_to_image"]).describe("The type of task to poll"),
       task_id: z.string().describe("Task ID to poll"),
       poll_interval: z.number().int().min(2).max(30).default(5).optional().describe("Seconds between polls (default 5)"),
       timeout: z.number().int().min(10).max(600).default(300).optional().describe("Maximum seconds to wait (default 300)"),

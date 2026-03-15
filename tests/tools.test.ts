@@ -588,6 +588,120 @@ describe("MCP Tools", () => {
       expect(text).toContain("https://example.com/model.glb");
     });
 
+    it("polls rigging task until success", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "rig-1", status: "IN_PROGRESS", progress: 50 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "rig-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            result: { rigged_character_glb_url: "https://example.com/rigged.glb" },
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "rigging", task_id: "rig-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+    });
+
+    it("polls animation task until success", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "anim-1", status: "IN_PROGRESS", progress: 50 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "anim-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            result: { animation_glb_url: "https://example.com/anim.glb" },
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "animation", task_id: "anim-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+    });
+
+    it("polls image_to_image task until success", async () => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "i2i-1", status: "IN_PROGRESS", progress: 50 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "i2i-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            image_urls: ["https://example.com/out.png"],
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: "image_to_image", task_id: "i2i-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+    });
+
     it("returns error when task fails", async () => {
       vi.useFakeTimers();
       let calls = 0;
