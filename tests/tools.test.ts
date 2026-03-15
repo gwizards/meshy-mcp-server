@@ -1028,6 +1028,108 @@ describe("MCP Tools", () => {
       expect(result.isError).toBe(true);
       const text = (result.content as Array<{ type: string; text: string }>)[0].text;
       expect(text).toContain("FAILED");
+      expect(text).toContain("Generation failed");
+    });
+
+    it.each([
+      "image_to_3d",
+      "multi_image_to_3d",
+      "remesh",
+      "retexture",
+      "text_to_image",
+    ])("polls %s task type until success", async (taskType) => {
+      vi.useFakeTimers();
+      let calls = 0;
+      vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+        calls++;
+        if (calls < 2) {
+          return new Response(
+            JSON.stringify({ id: "task-1", status: "IN_PROGRESS", progress: 50 }),
+            { status: 200 }
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            id: "task-1",
+            status: "SUCCEEDED",
+            progress: 100,
+            model_urls: { glb: "https://example.com/model.glb" },
+          }),
+          { status: 200 }
+        );
+      });
+
+      const resultPromise = client.callTool({
+        name: "wait_for_task",
+        arguments: { task_type: taskType, task_id: "task-1" },
+      });
+
+      for (let i = 0; i < 5; i++) {
+        await vi.advanceTimersByTimeAsync(5000);
+      }
+
+      const result = await resultPromise;
+      expect(result.isError).toBeFalsy();
+      const text = (result.content as Array<{ type: string; text: string }>)[0].text;
+      expect(text).toContain("SUCCEEDED");
+    });
+  });
+
+  // --- Array and enum validation ---
+
+  describe("array and enum validation", () => {
+    it("returns error when multi_image_to_3d_create has 0 images", async () => {
+      const result = await client.callTool({
+        name: "multi_image_to_3d_create",
+        arguments: { image_urls: [] },
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when multi_image_to_3d_create has 5 images", async () => {
+      const result = await client.callTool({
+        name: "multi_image_to_3d_create",
+        arguments: { image_urls: ["a", "b", "c", "d", "e"] },
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when image_to_image_create has 0 reference images", async () => {
+      const result = await client.callTool({
+        name: "image_to_image_create",
+        arguments: { ai_model: "nano-banana", prompt: "test", reference_image_urls: [] },
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error for invalid ai_model enum", async () => {
+      const result = await client.callTool({
+        name: "text_to_image_create",
+        arguments: { ai_model: "invalid-model", prompt: "test" },
+      });
+      expect(result.isError).toBe(true);
+    });
+
+    it("returns error when prompt exceeds max length", async () => {
+      const result = await client.callTool({
+        name: "text_to_3d_create",
+        arguments: { mode: "preview", prompt: "x".repeat(601) },
+      });
+      expect(result.isError).toBe(true);
+    });
+  });
+
+  // --- createServer ---
+
+  describe("createServer", () => {
+    it("throws when no API key provided", () => {
+      const originalKey = process.env.MESHY_API_KEY;
+      delete process.env.MESHY_API_KEY;
+      try {
+        expect(() => createServer()).toThrow("MESHY_API_KEY");
+      } finally {
+        if (originalKey) process.env.MESHY_API_KEY = originalKey;
+      }
     });
   });
 });
