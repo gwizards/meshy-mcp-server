@@ -249,6 +249,27 @@ export class MeshyClient {
     await this.request("DELETE", `/openapi/v1/rigging/${id}`);
   }
 
+  // --- Animation ---
+
+  async createAnimation(params: {
+    rig_task_id: string;
+    action_id: number;
+    post_process?: {
+      operation_type: "change_fps" | "fbx2usdz" | "extract_armature";
+      fps?: number;
+    };
+  }): Promise<{ result: string }> {
+    return this.request("POST", "/openapi/v1/animations", params as Record<string, unknown>);
+  }
+
+  async getAnimation(id: string): Promise<MeshyTask> {
+    return this.request("GET", `/openapi/v1/animations/${id}`);
+  }
+
+  async deleteAnimation(id: string): Promise<void> {
+    await this.request("DELETE", `/openapi/v1/animations/${id}`);
+  }
+
   // --- Text to Image ---
 
   async createTextToImage(params: {

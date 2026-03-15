@@ -248,6 +248,71 @@ describe("MeshyClient", () => {
       );
     });
 
+    it("createAnimation sends POST with params", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ result: "anim-task-1" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.createAnimation({
+        rig_task_id: "rig-1",
+        action_id: 92,
+      });
+
+      expect(res.result).toBe("anim-task-1");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/animations",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ rig_task_id: "rig-1", action_id: 92 }),
+        })
+      );
+    });
+
+    it("createAnimation sends post_process params", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ result: "anim-task-2" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      await client.createAnimation({
+        rig_task_id: "rig-1",
+        action_id: 0,
+        post_process: { operation_type: "change_fps", fps: 60 },
+      });
+
+      const callArgs = vi.mocked(fetch).mock.calls[0];
+      const body = JSON.parse(callArgs[1]?.body as string);
+      expect(body.post_process).toEqual({ operation_type: "change_fps", fps: 60 });
+    });
+
+    it("getAnimation sends GET", async () => {
+      mockFetch(async () =>
+        new Response(JSON.stringify({ id: "anim-1", status: "SUCCEEDED" }), { status: 200 })
+      );
+
+      const client = new MeshyClient("test-key");
+      const res = await client.getAnimation("anim-1");
+
+      expect(res.status).toBe("SUCCEEDED");
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/animations/anim-1",
+        expect.objectContaining({ method: "GET" })
+      );
+    });
+
+    it("deleteAnimation sends DELETE", async () => {
+      mockFetch(async () => new Response(null, { status: 204 }));
+
+      const client = new MeshyClient("test-key");
+      await client.deleteAnimation("anim-1");
+
+      expect(fetch).toHaveBeenCalledWith(
+        "https://api.meshy.ai/openapi/v1/animations/anim-1",
+        expect.objectContaining({ method: "DELETE" })
+      );
+    });
+
     it("createTextTo3D sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "task-abc" }), { status: 200 })
