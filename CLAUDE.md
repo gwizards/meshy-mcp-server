@@ -15,12 +15,14 @@ Two source files:
 
 ## Key Patterns
 
+- `taskId` and `paginationSchema` are module-level constants — created once, not per `createServer()` call
+- Repetitive GET/DELETE/LIST handlers use `makeGetHandler`, `makeDeleteHandler`, `makeListHandler` factories
+- `taskCreated(id, taskType)` formats all create success messages consistently with a typed `TaskType` param
 - All tool handlers wrap in try-catch and return `{ isError: true }` on failure
-- `MeshyClient.request()` retries transient errors (429, 5xx) and network errors with exponential backoff
-- Retry logic respects `Retry-After` header on 429 responses
-- `wait_for_task` polls any task type until terminal state (SUCCEEDED/FAILED/CANCELED)
-- Get tool responses format completed tasks with extracted download URLs via typed `MeshyTask`
-- Zod validates all tool inputs at the MCP layer (including `.int().min(1)` on pagination)
+- `MeshyClient.request()` computes `backoffDelay` once per retry iteration, used by both network and HTTP error paths
+- Retry logic retries 429/5xx with exponential backoff; respects `Retry-After` header on 429
+- `wait_for_task` checks remaining time before sleeping (not after) to avoid timeout overshoot
+- `MeshyClient.listPath()` builds paginated query strings — used by all 7 list methods
 - Task IDs validated with regex `/^[a-zA-Z0-9_-]+$/` and encoded with `encodeURIComponent()` in URL paths
 - Create handlers validate `result.result` exists before returning task ID
 - Conditional validation in create tools (e.g., prompt required for preview mode)

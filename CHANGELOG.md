@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.4] - 2026-03-15
+
+### Changed
+- `taskId` and `paginationSchema` moved to module scope — created once instead of per `createServer()` call
+- GET, DELETE, and LIST handlers replaced with `makeGetHandler`, `makeDeleteHandler`, `makeListHandler` factories — eliminates 25 near-identical handler bodies
+- `taskCreated()` helper unifies all 9 create success messages with a typed `TaskType` parameter
+- `backoffDelay` computed once per retry iteration — removes duplicate `Math.pow` in network and HTTP error paths
+- `wait_for_task` timeout checked before sleeping (not after) to avoid exceeding the configured timeout by a full poll interval
+
 ## [1.2.3] - 2026-03-15
 
 ### Changed
