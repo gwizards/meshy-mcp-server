@@ -49,6 +49,7 @@ export class MeshyClient {
     const maxRetries = 3;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      const backoffDelay = Math.pow(2, attempt) * 1000;
       let res: Response;
 
       try {
@@ -62,8 +63,7 @@ export class MeshyClient {
         });
       } catch (networkError) {
         if (attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1000;
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, backoffDelay));
           continue;
         }
         throw networkError;
@@ -74,7 +74,7 @@ export class MeshyClient {
 
         if (RETRYABLE_STATUSES.has(res.status) && attempt < maxRetries) {
           const retryAfter = res.headers.get("retry-after");
-          let delay = Math.pow(2, attempt) * 1000;
+          let delay = backoffDelay;
           if (retryAfter) {
             const seconds = Number(retryAfter);
             if (Number.isFinite(seconds) && seconds > 0) {

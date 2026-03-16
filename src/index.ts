@@ -5,10 +5,22 @@ import { createRequire } from "module";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { MeshyClient, MeshyTask, TASK_TYPES } from "./meshy-client.js";
+import { MeshyClient, MeshyTask, TaskType, TASK_TYPES } from "./meshy-client.js";
 
 const require = createRequire(import.meta.url);
 const { version } = require("../package.json");
+
+// --- Module-level constants (created once, shared across all server instances) ---
+
+const taskId = z.string().regex(/^[a-zA-Z0-9_-]+$/, "Invalid task ID format").max(100).describe("Task ID");
+
+const paginationSchema = {
+  page_num: z.number().int().min(1).default(1).describe("Page number"),
+  page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+  sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
+};
+
+// --- Formatting helpers ---
 
 function formatListResponse(tasks: MeshyTask[]): string {
   if (tasks.length === 0) return "No tasks found.";
@@ -35,6 +47,10 @@ function validationError(message: string) {
     content: [{ type: "text" as const, text: `Validation error: ${message}` }],
     isError: true,
   };
+}
+
+function taskCreated(id: string, taskType: TaskType): string {
+  return `Task created. ID: ${id}\n\nUse wait_for_task with task_type: "${taskType}" and this ID to wait for completion.`;
 }
 
 function formatTaskResponse(task: MeshyTask): string {
@@ -111,6 +127,41 @@ function formatTaskResponse(task: MeshyTask): string {
   return lines.join("\n");
 }
 
+// --- Handler factories ---
+
+function makeGetHandler(fn: (id: string) => Promise<MeshyTask>) {
+  return async ({ id }: { id: string }) => {
+    try {
+      const task = await fn(id);
+      return { content: [{ type: "text" as const, text: formatTaskResponse(task) }] };
+    } catch (error) {
+      return errorResult(error);
+    }
+  };
+}
+
+function makeDeleteHandler(fn: (id: string) => Promise<void>) {
+  return async ({ id }: { id: string }) => {
+    try {
+      await fn(id);
+      return { content: [{ type: "text" as const, text: `Task ${id} deleted.` }] };
+    } catch (error) {
+      return errorResult(error);
+    }
+  };
+}
+
+function makeListHandler(fn: (pageNum: number, pageSize: number, sortBy?: string) => Promise<MeshyTask[]>) {
+  return async ({ page_num, page_size, sort_by }: { page_num: number; page_size: number; sort_by?: "+created_at" | "-created_at" }) => {
+    try {
+      const tasks = await fn(page_num, page_size, sort_by);
+      return { content: [{ type: "text" as const, text: formatListResponse(tasks) }] };
+    } catch (error) {
+      return errorResult(error);
+    }
+  };
+}
+
 export function createServer(apiKey?: string): McpServer {
   const key = apiKey ?? process.env.MESHY_API_KEY;
   if (!key) {
@@ -122,14 +173,6 @@ export function createServer(apiKey?: string): McpServer {
     name: "meshy",
     version,
   });
-
-  const taskId = z.string().regex(/^[a-zA-Z0-9_-]+$/, "Invalid task ID format").max(100).describe("Task ID");
-
-  const paginationSchema = {
-    page_num: z.number().int().min(1).default(1).describe("Page number"),
-    page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-    sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-  };
 
   // --- Text to 3D ---
 
@@ -167,56 +210,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "text_to_3d" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "text_to_3d") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "text_to_3d_get",
-    "Check the status of a text-to-3D task. Use wait_for_task to poll until complete.",
-    {
-      id: taskId,
-    },
-    async ({ id }) => {
-      try {
-        const task = await client.getTextTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "text_to_3d_list",
-    "List text-to-3D tasks with pagination.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listTextTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "text_to_3d_delete",
-    "Delete a text-to-3D task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteTextTo3D(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("text_to_3d_get", "Check the status of a text-to-3D task. Use wait_for_task to poll until complete.", { id: taskId }, makeGetHandler((id) => client.getTextTo3D(id)));
+  server.tool("text_to_3d_list", "List text-to-3D tasks with pagination.", paginationSchema, makeListHandler((p, s, o) => client.listTextTo3D(p, s, o)));
+  server.tool("text_to_3d_delete", "Delete a text-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTextTo3D(id)));
 
   // --- Image to 3D ---
 
@@ -247,54 +250,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "image_to_3d" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "image_to_3d") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "image_to_3d_get",
-    "Check the status of an image-to-3D task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getImageTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "image_to_3d_list",
-    "List image-to-3D tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "image_to_3d_delete",
-    "Delete an image-to-3D task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteImageTo3D(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("image_to_3d_get", "Check the status of an image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getImageTo3D(id)));
+  server.tool("image_to_3d_list", "List image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listImageTo3D(p, s, o)));
+  server.tool("image_to_3d_delete", "Delete an image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteImageTo3D(id)));
 
   // --- Multi-Image to 3D ---
 
@@ -324,54 +289,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "multi_image_to_3d" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "multi_image_to_3d") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "multi_image_to_3d_get",
-    "Check the status of a multi-image-to-3D task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getMultiImageTo3D(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "multi_image_to_3d_list",
-    "List multi-image-to-3D tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listMultiImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "multi_image_to_3d_delete",
-    "Delete a multi-image-to-3D task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteMultiImageTo3D(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("multi_image_to_3d_get", "Check the status of a multi-image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getMultiImageTo3D(id)));
+  server.tool("multi_image_to_3d_list", "List multi-image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listMultiImageTo3D(p, s, o)));
+  server.tool("multi_image_to_3d_delete", "Delete a multi-image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteMultiImageTo3D(id)));
 
   // --- Remesh ---
 
@@ -397,54 +324,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Remesh task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "remesh" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "remesh") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "remesh_get",
-    "Check the status of a remesh task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getRemesh(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "remesh_list",
-    "List remesh tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listRemesh(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "remesh_delete",
-    "Delete a remesh task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteRemesh(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("remesh_get", "Check the status of a remesh task.", { id: taskId }, makeGetHandler((id) => client.getRemesh(id)));
+  server.tool("remesh_list", "List remesh tasks.", paginationSchema, makeListHandler((p, s, o) => client.listRemesh(p, s, o)));
+  server.tool("remesh_delete", "Delete a remesh task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRemesh(id)));
 
   // --- Retexture ---
 
@@ -474,54 +363,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Retexture task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "retexture" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "retexture") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "retexture_get",
-    "Check the status of a retexture task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getRetexture(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "retexture_list",
-    "List retexture tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listRetexture(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "retexture_delete",
-    "Delete a retexture task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteRetexture(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("retexture_get", "Check the status of a retexture task.", { id: taskId }, makeGetHandler((id) => client.getRetexture(id)));
+  server.tool("retexture_list", "List retexture tasks.", paginationSchema, makeListHandler((p, s, o) => client.listRetexture(p, s, o)));
+  server.tool("retexture_delete", "Delete a retexture task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRetexture(id)));
 
   // --- Rigging (no list endpoint in Meshy API) ---
 
@@ -543,40 +394,15 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Rigging task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "rigging" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "rigging") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "rigging_get",
-    "Check the status of a rigging task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getRigging(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "rigging_delete",
-    "Delete a rigging task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteRigging(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("rigging_get", "Check the status of a rigging task.", { id: taskId }, makeGetHandler((id) => client.getRigging(id)));
+  server.tool("rigging_delete", "Delete a rigging task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRigging(id)));
 
   // --- Animation (no list endpoint in Meshy API) ---
 
@@ -600,40 +426,15 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Animation task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "animation" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "animation") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "animation_get",
-    "Check the status of an animation task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getAnimation(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "animation_delete",
-    "Delete an animation task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteAnimation(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("animation_get", "Check the status of an animation task.", { id: taskId }, makeGetHandler((id) => client.getAnimation(id)));
+  server.tool("animation_delete", "Delete an animation task.", { id: taskId }, makeDeleteHandler((id) => client.deleteAnimation(id)));
 
   // --- Text to Image ---
 
@@ -654,54 +455,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "text_to_image" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "text_to_image") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "text_to_image_get",
-    "Check the status of a text-to-image task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getTextToImage(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "text_to_image_list",
-    "List text-to-image tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listTextToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "text_to_image_delete",
-    "Delete a text-to-image task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteTextToImage(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("text_to_image_get", "Check the status of a text-to-image task.", { id: taskId }, makeGetHandler((id) => client.getTextToImage(id)));
+  server.tool("text_to_image_list", "List text-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTextToImage(p, s, o)));
+  server.tool("text_to_image_delete", "Delete a text-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTextToImage(id)));
 
   // --- Image to Image ---
 
@@ -720,54 +483,16 @@ export function createServer(apiKey?: string): McpServer {
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
-        return { content: [{ type: "text", text: `Task created. ID: ${result.result}\n\nUse wait_for_task with task_type: "image_to_image" and this ID to wait for completion.` }] };
+        return { content: [{ type: "text", text: taskCreated(result.result, "image_to_image") }] };
       } catch (error) {
         return errorResult(error);
       }
     }
   );
 
-  server.tool(
-    "image_to_image_get",
-    "Check the status of an image-to-image task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        const task = await client.getImageToImage(id);
-        return { content: [{ type: "text", text: formatTaskResponse(task) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "image_to_image_list",
-    "List image-to-image tasks.",
-    paginationSchema,
-    async ({ page_num, page_size, sort_by }) => {
-      try {
-        const tasks = await client.listImageToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
-
-  server.tool(
-    "image_to_image_delete",
-    "Delete an image-to-image task.",
-    { id: taskId },
-    async ({ id }) => {
-      try {
-        await client.deleteImageToImage(id);
-        return { content: [{ type: "text", text: `Task ${id} deleted.` }] };
-      } catch (error) {
-        return errorResult(error);
-      }
-    }
-  );
+  server.tool("image_to_image_get", "Check the status of an image-to-image task.", { id: taskId }, makeGetHandler((id) => client.getImageToImage(id)));
+  server.tool("image_to_image_list", "List image-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listImageToImage(p, s, o)));
+  server.tool("image_to_image_delete", "Delete an image-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteImageToImage(id)));
 
   // --- Wait for Task ---
 
