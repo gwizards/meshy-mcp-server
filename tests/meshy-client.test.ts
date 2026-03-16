@@ -216,7 +216,7 @@ describe("MeshyClient", () => {
       mockFetch(async () => new Response(null, { status: 204 }));
 
       const client = new MeshyClient("test-key");
-      await client.deleteTextTo3D("task-123");
+      await client.deleteTask("text_to_3d", "task-123");
       // Should not throw
     });
 
@@ -239,20 +239,20 @@ describe("MeshyClient", () => {
       );
 
       const client = new MeshyClient("test-key");
-      await client.createTextTo3D({ mode: "preview", prompt: "test" });
+      await client.createTask("text_to_3d", { mode: "preview", prompt: "test" });
 
       const callArgs = vi.mocked(fetch).mock.calls[0];
       const headers = callArgs[1]?.headers as Record<string, string>;
       expect(headers["Content-Type"]).toBe("application/json");
     });
 
-    it("createRigging sends POST with params", async () => {
+    it("createTask('rigging') sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "rig-task-1" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.createRigging({
+      const res = await client.createTask("rigging", {
         input_task_id: "task-abc",
         height_meters: 1.8,
       });
@@ -267,13 +267,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("getRigging sends GET", async () => {
+    it("getTask('rigging') sends GET", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ id: "rig-1", status: "SUCCEEDED" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.getRigging("rig-1");
+      const res = await client.getTask("rigging", "rig-1");
 
       expect(res.status).toBe("SUCCEEDED");
       expect(fetch).toHaveBeenCalledWith(
@@ -282,11 +282,11 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("deleteRigging sends DELETE", async () => {
+    it("deleteTask('rigging') sends DELETE", async () => {
       mockFetch(async () => new Response(null, { status: 204 }));
 
       const client = new MeshyClient("test-key");
-      await client.deleteRigging("rig-1");
+      await client.deleteTask("rigging", "rig-1");
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v1/rigging/rig-1",
@@ -294,13 +294,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("createAnimation sends POST with params", async () => {
+    it("createTask('animation') sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "anim-task-1" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.createAnimation({
+      const res = await client.createTask("animation", {
         rig_task_id: "rig-1",
         action_id: 92,
       });
@@ -315,13 +315,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("createAnimation sends post_process params", async () => {
+    it("createTask('animation') sends post_process params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "anim-task-2" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      await client.createAnimation({
+      await client.createTask("animation", {
         rig_task_id: "rig-1",
         action_id: 0,
         post_process: { operation_type: "change_fps", fps: 60 },
@@ -332,13 +332,13 @@ describe("MeshyClient", () => {
       expect(body.post_process).toEqual({ operation_type: "change_fps", fps: 60 });
     });
 
-    it("getAnimation sends GET", async () => {
+    it("getTask('animation') sends GET", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ id: "anim-1", status: "SUCCEEDED" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.getAnimation("anim-1");
+      const res = await client.getTask("animation", "anim-1");
 
       expect(res.status).toBe("SUCCEEDED");
       expect(fetch).toHaveBeenCalledWith(
@@ -347,11 +347,11 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("deleteAnimation sends DELETE", async () => {
+    it("deleteTask('animation') sends DELETE", async () => {
       mockFetch(async () => new Response(null, { status: 204 }));
 
       const client = new MeshyClient("test-key");
-      await client.deleteAnimation("anim-1");
+      await client.deleteTask("animation", "anim-1");
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v1/animations/anim-1",
@@ -359,13 +359,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("createImageToImage sends POST with params", async () => {
+    it("createTask('image_to_image') sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "i2i-task-1" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.createImageToImage({
+      const res = await client.createTask("image_to_image", {
         ai_model: "nano-banana",
         prompt: "make it blue",
         reference_image_urls: ["https://example.com/ref.jpg"],
@@ -385,13 +385,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("getImageToImage sends GET", async () => {
+    it("getTask('image_to_image') sends GET", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ id: "i2i-1", status: "SUCCEEDED" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.getImageToImage("i2i-1");
+      const res = await client.getTask("image_to_image", "i2i-1");
 
       expect(res.status).toBe("SUCCEEDED");
       expect(fetch).toHaveBeenCalledWith(
@@ -400,13 +400,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("listImageToImage sends GET with pagination", async () => {
+    it("listTasks('image_to_image') sends GET with pagination", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify([{ id: "i2i-1" }]), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      await client.listImageToImage(2, 20, "-created_at");
+      await client.listTasks("image_to_image", 2, 20, "-created_at");
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v1/image-to-image?page_num=2&page_size=20&sort_by=-created_at",
@@ -414,11 +414,11 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("deleteImageToImage sends DELETE", async () => {
+    it("deleteTask('image_to_image') sends DELETE", async () => {
       mockFetch(async () => new Response(null, { status: 204 }));
 
       const client = new MeshyClient("test-key");
-      await client.deleteImageToImage("i2i-1");
+      await client.deleteTask("image_to_image", "i2i-1");
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v1/image-to-image/i2i-1",
@@ -432,7 +432,7 @@ describe("MeshyClient", () => {
       );
 
       const client = new MeshyClient("test-key");
-      await client.getTextTo3D("../../v1/balance");
+      await client.getTask("text_to_3d", "../../v1/balance");
 
       expect(fetch).toHaveBeenCalledWith(
         expect.stringContaining("/openapi/v2/text-to-3d/..%2F..%2Fv1%2Fbalance"),
@@ -464,7 +464,7 @@ describe("MeshyClient", () => {
       );
 
       const client = new MeshyClient("test-key");
-      await expect(client.deleteTextTo3D("task-1")).resolves.not.toThrow();
+      await expect(client.deleteTask("text_to_3d", "task-1")).resolves.not.toThrow();
     });
 
     it("URL-encodes sort_by parameter with + character", async () => {
@@ -473,7 +473,7 @@ describe("MeshyClient", () => {
       );
 
       const client = new MeshyClient("test-key");
-      await client.listTextTo3D(1, 10, "+created_at");
+      await client.listTasks("text_to_3d", 1, 10, "+created_at");
 
       expect(fetch).toHaveBeenCalledWith(
         "https://api.meshy.ai/openapi/v2/text-to-3d?page_num=1&page_size=10&sort_by=%2Bcreated_at",
@@ -481,13 +481,13 @@ describe("MeshyClient", () => {
       );
     });
 
-    it("createTextTo3D sends POST with params", async () => {
+    it("createTask('text_to_3d') sends POST with params", async () => {
       mockFetch(async () =>
         new Response(JSON.stringify({ result: "task-abc" }), { status: 200 })
       );
 
       const client = new MeshyClient("test-key");
-      const res = await client.createTextTo3D({
+      const res = await client.createTask("text_to_3d", {
         mode: "preview",
         prompt: "a red car",
       });

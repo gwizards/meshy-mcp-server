@@ -11,7 +11,7 @@
 
 Two source files:
 - `src/index.ts` — MCP server setup, 36 tool definitions (34 CRUD + wait_for_task + get_balance), validation, error handling. Exports `createServer(apiKey?)` for testing. Version read from package.json at runtime. Rigging and animation have no list tools (Meshy API does not expose list endpoints for these types).
-- `src/meshy-client.ts` — Meshy API HTTP client with retry logic, generic `getTask()` for polling, exports `TaskType` union and `TASK_TYPES` const
+- `src/meshy-client.ts` — Meshy API HTTP client with retry logic. Exports `TaskType` union and `TASK_TYPES` const. Public API: `createTask(taskType, params)`, `getTask(taskType, id)`, `deleteTask(taskType, id)`, `listTasks(taskType, pageNum, pageSize, sortBy?)`, `getBalance()`
 
 ## Key Patterns
 

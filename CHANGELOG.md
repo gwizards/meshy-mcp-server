@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.5] - 2026-03-15
+
+### Changed
+- `MeshyClient` replaced 34 type-specific methods (`createTextTo3D`, `getRigging`, `deleteAnimation`, etc.) with 4 generic methods: `createTask`, `getTask`, `deleteTask`, `listTasks`
+- `index.ts` updated all tool handlers to use generic client methods with `TaskType` literals
+- `rigging_create` now uses shared `requireSource()` helper (consistent with remesh/retexture)
+- Test suite updated to use generic API — all 119 tests pass
+
 ## [1.2.4] - 2026-03-15
 
 ### Changed

@@ -1,5 +1,9 @@
 const BASE_URL = "https://api.meshy.ai";
 const RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+const FETCH_TIMEOUT_MS = 30_000;
+
+export const TASK_TYPES = ["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image", "rigging", "animation", "image_to_image"] as const;
+export type TaskType = typeof TASK_TYPES[number];
 
 const RESOURCE_PATHS: Record<TaskType, string> = {
   text_to_3d: "/openapi/v2/text-to-3d",
@@ -31,9 +35,6 @@ export interface MeshyTask {
   [key: string]: unknown;
 }
 
-export const TASK_TYPES = ["text_to_3d", "image_to_3d", "multi_image_to_3d", "remesh", "retexture", "text_to_image", "rigging", "animation", "image_to_image"] as const;
-export type TaskType = typeof TASK_TYPES[number];
-
 export class MeshyClient {
   private apiKey: string;
 
@@ -55,6 +56,7 @@ export class MeshyClient {
       try {
         res = await fetch(`${BASE_URL}${path}`, {
           method,
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
           headers: {
             Authorization: `Bearer ${this.apiKey}`,
             ...(body ? { "Content-Type": "application/json" } : {}),
@@ -90,9 +92,7 @@ export class MeshyClient {
 
       const text = await res.text();
       if (!text) {
-        if (method === "DELETE") {
-          return {} as T;
-        }
+        if (method === "DELETE") return {} as T;
         throw new Error(`Meshy API returned empty response for ${method} ${path}`);
       }
 
@@ -113,263 +113,23 @@ export class MeshyClient {
     return path;
   }
 
-  // --- Text to 3D ---
-
-  async createTextTo3D(params: {
-    mode: "preview" | "refine";
-    prompt?: string;
-    preview_task_id?: string;
-    art_style?: string;
-    negative_prompt?: string;
-    ai_model?: string;
-    topology?: string;
-    target_polycount?: number;
-    symmetry_mode?: string;
-    enable_pbr?: boolean;
-    texture_prompt?: string;
-    texture_image_url?: string;
-    moderation?: boolean;
-    model_type?: string;
-    should_remesh?: boolean;
-    pose_mode?: string;
-    remove_lighting?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.text_to_3d, params as Record<string, unknown>);
+  createTask(taskType: TaskType, params: Record<string, unknown>): Promise<{ result: string }> {
+    return this.request("POST", RESOURCE_PATHS[taskType], params);
   }
 
-  async getTextTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.text_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  async listTextTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.text_to_3d, pageNum, pageSize, sortBy));
-  }
-
-  async deleteTextTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.text_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Image to 3D ---
-
-  async createImageTo3D(params: {
-    image_url: string;
-    model_type?: string;
-    ai_model?: string;
-    topology?: string;
-    target_polycount?: number;
-    symmetry_mode?: string;
-    should_remesh?: boolean;
-    should_texture?: boolean;
-    enable_pbr?: boolean;
-    texture_prompt?: string;
-    texture_image_url?: string;
-    moderation?: boolean;
-    save_pre_remeshed_model?: boolean;
-    pose_mode?: string;
-    image_enhancement?: boolean;
-    remove_lighting?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.image_to_3d, params as Record<string, unknown>);
-  }
-
-  async getImageTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.image_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  async listImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.image_to_3d, pageNum, pageSize, sortBy));
-  }
-
-  async deleteImageTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.image_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Multi-Image to 3D ---
-
-  async createMultiImageTo3D(params: {
-    image_urls: string[];
-    ai_model?: string;
-    topology?: string;
-    target_polycount?: number;
-    should_remesh?: boolean;
-    should_texture?: boolean;
-    enable_pbr?: boolean;
-    moderation?: boolean;
-    symmetry_mode?: string;
-    save_pre_remeshed_model?: boolean;
-    pose_mode?: string;
-    image_enhancement?: boolean;
-    remove_lighting?: boolean;
-    texture_prompt?: string;
-    texture_image_url?: string;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.multi_image_to_3d, params as Record<string, unknown>);
-  }
-
-  async getMultiImageTo3D(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.multi_image_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  async listMultiImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.multi_image_to_3d, pageNum, pageSize, sortBy));
-  }
-
-  async deleteMultiImageTo3D(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.multi_image_to_3d}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Remesh ---
-
-  async createRemesh(params: {
-    input_task_id?: string;
-    model_url?: string;
-    target_formats?: string[];
-    topology?: string;
-    target_polycount?: number;
-    resize_height?: number;
-    origin_at?: string;
-    convert_format_only?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.remesh, params as Record<string, unknown>);
-  }
-
-  async getRemesh(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.remesh}/${encodeURIComponent(id)}`);
-  }
-
-  async listRemesh(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.remesh, pageNum, pageSize, sortBy));
-  }
-
-  async deleteRemesh(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.remesh}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Retexture ---
-
-  async createRetexture(params: {
-    input_task_id?: string;
-    model_url?: string;
-    text_style_prompt?: string;
-    image_style_url?: string;
-    ai_model?: string;
-    enable_original_uv?: boolean;
-    enable_pbr?: boolean;
-    remove_lighting?: boolean;
-    moderation?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.retexture, params as Record<string, unknown>);
-  }
-
-  async getRetexture(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.retexture}/${encodeURIComponent(id)}`);
-  }
-
-  async listRetexture(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.retexture, pageNum, pageSize, sortBy));
-  }
-
-  async deleteRetexture(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.retexture}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Rigging ---
-
-  async createRigging(params: {
-    input_task_id?: string;
-    model_url?: string;
-    height_meters?: number;
-    texture_image_url?: string;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.rigging, params as Record<string, unknown>);
-  }
-
-  async getRigging(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.rigging}/${encodeURIComponent(id)}`);
-  }
-
-  async deleteRigging(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.rigging}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Animation ---
-
-  async createAnimation(params: {
-    rig_task_id: string;
-    action_id: number;
-    post_process?: {
-      operation_type: "change_fps" | "fbx2usdz" | "extract_armature";
-      fps?: number;
-    };
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.animation, params as Record<string, unknown>);
-  }
-
-  async getAnimation(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.animation}/${encodeURIComponent(id)}`);
-  }
-
-  async deleteAnimation(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.animation}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Text to Image ---
-
-  async createTextToImage(params: {
-    ai_model: string;
-    prompt: string;
-    generate_multi_view?: boolean;
-    pose_mode?: string;
-    aspect_ratio?: string;
-    moderation?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.text_to_image, params as Record<string, unknown>);
-  }
-
-  async getTextToImage(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.text_to_image}/${encodeURIComponent(id)}`);
-  }
-
-  async listTextToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.text_to_image, pageNum, pageSize, sortBy));
-  }
-
-  async deleteTextToImage(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.text_to_image}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Image to Image ---
-
-  async createImageToImage(params: {
-    ai_model: string;
-    prompt: string;
-    reference_image_urls: string[];
-    generate_multi_view?: boolean;
-  }): Promise<{ result: string }> {
-    return this.request("POST", RESOURCE_PATHS.image_to_image, params as Record<string, unknown>);
-  }
-
-  async getImageToImage(id: string): Promise<MeshyTask> {
-    return this.request("GET", `${RESOURCE_PATHS.image_to_image}/${encodeURIComponent(id)}`);
-  }
-
-  async listImageToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    return this.request("GET", this.listPath(RESOURCE_PATHS.image_to_image, pageNum, pageSize, sortBy));
-  }
-
-  async deleteImageToImage(id: string): Promise<void> {
-    await this.request("DELETE", `${RESOURCE_PATHS.image_to_image}/${encodeURIComponent(id)}`);
-  }
-
-  // --- Generic task getter (for polling) ---
-
-  async getTask(taskType: TaskType, id: string): Promise<MeshyTask> {
+  getTask(taskType: TaskType, id: string): Promise<MeshyTask> {
     return this.request("GET", `${RESOURCE_PATHS[taskType]}/${encodeURIComponent(id)}`);
   }
 
-  // --- Balance ---
+  deleteTask(taskType: TaskType, id: string): Promise<void> {
+    return this.request("DELETE", `${RESOURCE_PATHS[taskType]}/${encodeURIComponent(id)}`);
+  }
 
-  async getBalance(): Promise<{ balance: number }> {
+  listTasks(taskType: TaskType, pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
+    return this.request("GET", this.listPath(RESOURCE_PATHS[taskType], pageNum, pageSize, sortBy));
+  }
+
+  getBalance(): Promise<{ balance: number }> {
     return this.request("GET", "/openapi/v1/balance");
   }
 }

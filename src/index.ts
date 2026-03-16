@@ -14,10 +14,13 @@ const { version } = require("../package.json");
 
 const taskId = z.string().regex(/^[a-zA-Z0-9_-]+$/, "Invalid task ID format").max(100).describe("Task ID");
 
+const SORT_ORDERS = ["+created_at", "-created_at"] as const;
+type SortOrder = (typeof SORT_ORDERS)[number];
+
 const paginationSchema = {
   page_num: z.number().int().min(1).default(1).describe("Page number"),
   page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-  sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
+  sort_by: z.enum(SORT_ORDERS).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
 };
 
 // --- Formatting helpers ---
@@ -151,8 +154,15 @@ function makeDeleteHandler(fn: (id: string) => Promise<void>) {
   };
 }
 
+function requireSource(params: { input_task_id?: string; model_url?: string }) {
+  if (!params.input_task_id && !params.model_url) {
+    return validationError("Either input_task_id or model_url is required");
+  }
+  return null;
+}
+
 function makeListHandler(fn: (pageNum: number, pageSize: number, sortBy?: string) => Promise<MeshyTask[]>) {
-  return async ({ page_num, page_size, sort_by }: { page_num: number; page_size: number; sort_by?: "+created_at" | "-created_at" }) => {
+  return async ({ page_num, page_size, sort_by }: { page_num: number; page_size: number; sort_by?: SortOrder }) => {
     try {
       const tasks = await fn(page_num, page_size, sort_by);
       return { content: [{ type: "text" as const, text: formatListResponse(tasks) }] };
@@ -206,7 +216,7 @@ export function createServer(apiKey?: string): McpServer {
         if (params.mode === "refine" && !params.preview_task_id) {
           return validationError("preview_task_id is required for refine mode");
         }
-        const result = await client.createTextTo3D(params);
+        const result = await client.createTask("text_to_3d", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -217,9 +227,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("text_to_3d_get", "Check the status of a text-to-3D task. Use wait_for_task to poll until complete.", { id: taskId }, makeGetHandler((id) => client.getTextTo3D(id)));
-  server.tool("text_to_3d_list", "List text-to-3D tasks with pagination.", paginationSchema, makeListHandler((p, s, o) => client.listTextTo3D(p, s, o)));
-  server.tool("text_to_3d_delete", "Delete a text-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTextTo3D(id)));
+  server.tool("text_to_3d_get", "Check the status of a text-to-3D task. Use wait_for_task to poll until complete.", { id: taskId }, makeGetHandler((id) => client.getTask("text_to_3d", id)));
+  server.tool("text_to_3d_list", "List text-to-3D tasks with pagination.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("text_to_3d", p, s, o)));
+  server.tool("text_to_3d_delete", "Delete a text-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("text_to_3d", id)));
 
   // --- Image to 3D ---
 
@@ -246,7 +256,7 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        const result = await client.createImageTo3D(params);
+        const result = await client.createTask("image_to_3d", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -257,9 +267,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("image_to_3d_get", "Check the status of an image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getImageTo3D(id)));
-  server.tool("image_to_3d_list", "List image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listImageTo3D(p, s, o)));
-  server.tool("image_to_3d_delete", "Delete an image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteImageTo3D(id)));
+  server.tool("image_to_3d_get", "Check the status of an image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getTask("image_to_3d", id)));
+  server.tool("image_to_3d_list", "List image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("image_to_3d", p, s, o)));
+  server.tool("image_to_3d_delete", "Delete an image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("image_to_3d", id)));
 
   // --- Multi-Image to 3D ---
 
@@ -285,7 +295,7 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        const result = await client.createMultiImageTo3D(params);
+        const result = await client.createTask("multi_image_to_3d", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -296,9 +306,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("multi_image_to_3d_get", "Check the status of a multi-image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getMultiImageTo3D(id)));
-  server.tool("multi_image_to_3d_list", "List multi-image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listMultiImageTo3D(p, s, o)));
-  server.tool("multi_image_to_3d_delete", "Delete a multi-image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteMultiImageTo3D(id)));
+  server.tool("multi_image_to_3d_get", "Check the status of a multi-image-to-3D task.", { id: taskId }, makeGetHandler((id) => client.getTask("multi_image_to_3d", id)));
+  server.tool("multi_image_to_3d_list", "List multi-image-to-3D tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("multi_image_to_3d", p, s, o)));
+  server.tool("multi_image_to_3d_delete", "Delete a multi-image-to-3D task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("multi_image_to_3d", id)));
 
   // --- Remesh ---
 
@@ -317,10 +327,9 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        if (!params.input_task_id && !params.model_url) {
-          return validationError("Either input_task_id or model_url is required");
-        }
-        const result = await client.createRemesh(params);
+        const srcErr = requireSource(params);
+        if (srcErr) return srcErr;
+        const result = await client.createTask("remesh", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -331,9 +340,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("remesh_get", "Check the status of a remesh task.", { id: taskId }, makeGetHandler((id) => client.getRemesh(id)));
-  server.tool("remesh_list", "List remesh tasks.", paginationSchema, makeListHandler((p, s, o) => client.listRemesh(p, s, o)));
-  server.tool("remesh_delete", "Delete a remesh task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRemesh(id)));
+  server.tool("remesh_get", "Check the status of a remesh task.", { id: taskId }, makeGetHandler((id) => client.getTask("remesh", id)));
+  server.tool("remesh_list", "List remesh tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("remesh", p, s, o)));
+  server.tool("remesh_delete", "Delete a remesh task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("remesh", id)));
 
   // --- Retexture ---
 
@@ -353,13 +362,12 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        if (!params.input_task_id && !params.model_url) {
-          return validationError("Either input_task_id or model_url is required");
-        }
+        const srcErr = requireSource(params);
+        if (srcErr) return srcErr;
         if (!params.text_style_prompt && !params.image_style_url) {
           return validationError("Either text_style_prompt or image_style_url is required");
         }
-        const result = await client.createRetexture(params);
+        const result = await client.createTask("retexture", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -370,9 +378,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("retexture_get", "Check the status of a retexture task.", { id: taskId }, makeGetHandler((id) => client.getRetexture(id)));
-  server.tool("retexture_list", "List retexture tasks.", paginationSchema, makeListHandler((p, s, o) => client.listRetexture(p, s, o)));
-  server.tool("retexture_delete", "Delete a retexture task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRetexture(id)));
+  server.tool("retexture_get", "Check the status of a retexture task.", { id: taskId }, makeGetHandler((id) => client.getTask("retexture", id)));
+  server.tool("retexture_list", "List retexture tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("retexture", p, s, o)));
+  server.tool("retexture_delete", "Delete a retexture task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("retexture", id)));
 
   // --- Rigging (no list endpoint in Meshy API) ---
 
@@ -387,10 +395,9 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        if (!params.input_task_id && !params.model_url) {
-          return validationError("Either input_task_id or model_url is required");
-        }
-        const result = await client.createRigging(params);
+        const srcErr = requireSource(params);
+        if (srcErr) return srcErr;
+        const result = await client.createTask("rigging", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -401,8 +408,8 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("rigging_get", "Check the status of a rigging task.", { id: taskId }, makeGetHandler((id) => client.getRigging(id)));
-  server.tool("rigging_delete", "Delete a rigging task.", { id: taskId }, makeDeleteHandler((id) => client.deleteRigging(id)));
+  server.tool("rigging_get", "Check the status of a rigging task.", { id: taskId }, makeGetHandler((id) => client.getTask("rigging", id)));
+  server.tool("rigging_delete", "Delete a rigging task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("rigging", id)));
 
   // --- Animation (no list endpoint in Meshy API) ---
 
@@ -422,7 +429,7 @@ export function createServer(apiKey?: string): McpServer {
         if (params.post_process?.operation_type === "change_fps" && params.post_process.fps == null) {
           return validationError("fps is required when operation_type is 'change_fps'");
         }
-        const result = await client.createAnimation(params);
+        const result = await client.createTask("animation", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -433,8 +440,8 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("animation_get", "Check the status of an animation task.", { id: taskId }, makeGetHandler((id) => client.getAnimation(id)));
-  server.tool("animation_delete", "Delete an animation task.", { id: taskId }, makeDeleteHandler((id) => client.deleteAnimation(id)));
+  server.tool("animation_get", "Check the status of an animation task.", { id: taskId }, makeGetHandler((id) => client.getTask("animation", id)));
+  server.tool("animation_delete", "Delete an animation task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("animation", id)));
 
   // --- Text to Image ---
 
@@ -451,7 +458,7 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        const result = await client.createTextToImage(params);
+        const result = await client.createTask("text_to_image", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -462,9 +469,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("text_to_image_get", "Check the status of a text-to-image task.", { id: taskId }, makeGetHandler((id) => client.getTextToImage(id)));
-  server.tool("text_to_image_list", "List text-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTextToImage(p, s, o)));
-  server.tool("text_to_image_delete", "Delete a text-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTextToImage(id)));
+  server.tool("text_to_image_get", "Check the status of a text-to-image task.", { id: taskId }, makeGetHandler((id) => client.getTask("text_to_image", id)));
+  server.tool("text_to_image_list", "List text-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("text_to_image", p, s, o)));
+  server.tool("text_to_image_delete", "Delete a text-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("text_to_image", id)));
 
   // --- Image to Image ---
 
@@ -479,7 +486,7 @@ export function createServer(apiKey?: string): McpServer {
     },
     async (params) => {
       try {
-        const result = await client.createImageToImage(params);
+        const result = await client.createTask("image_to_image", params as Record<string, unknown>);
         if (!result?.result) {
           return errorResult(new Error(`Unexpected API response: ${JSON.stringify(result)}`));
         }
@@ -490,9 +497,9 @@ export function createServer(apiKey?: string): McpServer {
     }
   );
 
-  server.tool("image_to_image_get", "Check the status of an image-to-image task.", { id: taskId }, makeGetHandler((id) => client.getImageToImage(id)));
-  server.tool("image_to_image_list", "List image-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listImageToImage(p, s, o)));
-  server.tool("image_to_image_delete", "Delete an image-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteImageToImage(id)));
+  server.tool("image_to_image_get", "Check the status of an image-to-image task.", { id: taskId }, makeGetHandler((id) => client.getTask("image_to_image", id)));
+  server.tool("image_to_image_list", "List image-to-image tasks.", paginationSchema, makeListHandler((p, s, o) => client.listTasks("image_to_image", p, s, o)));
+  server.tool("image_to_image_delete", "Delete an image-to-image task.", { id: taskId }, makeDeleteHandler((id) => client.deleteTask("image_to_image", id)));
 
   // --- Wait for Task ---
 
