@@ -107,6 +107,12 @@ export class MeshyClient {
     throw new Error("Max retries exceeded");
   }
 
+  private listPath(base: string, pageNum: number, pageSize: number, sortBy?: string): string {
+    let path = `${base}?page_num=${pageNum}&page_size=${pageSize}`;
+    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
+    return path;
+  }
+
   // --- Text to 3D ---
 
   async createTextTo3D(params: {
@@ -136,9 +142,7 @@ export class MeshyClient {
   }
 
   async listTextTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.text_to_3d}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.text_to_3d, pageNum, pageSize, sortBy));
   }
 
   async deleteTextTo3D(id: string): Promise<void> {
@@ -173,9 +177,7 @@ export class MeshyClient {
   }
 
   async listImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.image_to_3d}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.image_to_3d, pageNum, pageSize, sortBy));
   }
 
   async deleteImageTo3D(id: string): Promise<void> {
@@ -209,9 +211,7 @@ export class MeshyClient {
   }
 
   async listMultiImageTo3D(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.multi_image_to_3d}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.multi_image_to_3d, pageNum, pageSize, sortBy));
   }
 
   async deleteMultiImageTo3D(id: string): Promise<void> {
@@ -238,9 +238,7 @@ export class MeshyClient {
   }
 
   async listRemesh(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.remesh}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.remesh, pageNum, pageSize, sortBy));
   }
 
   async deleteRemesh(id: string): Promise<void> {
@@ -268,9 +266,7 @@ export class MeshyClient {
   }
 
   async listRetexture(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.retexture}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.retexture, pageNum, pageSize, sortBy));
   }
 
   async deleteRetexture(id: string): Promise<void> {
@@ -335,9 +331,7 @@ export class MeshyClient {
   }
 
   async listTextToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.text_to_image}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.text_to_image, pageNum, pageSize, sortBy));
   }
 
   async deleteTextToImage(id: string): Promise<void> {
@@ -360,9 +354,7 @@ export class MeshyClient {
   }
 
   async listImageToImage(pageNum = 1, pageSize = 10, sortBy?: string): Promise<MeshyTask[]> {
-    let path = `${RESOURCE_PATHS.image_to_image}?page_num=${pageNum}&page_size=${pageSize}`;
-    if (sortBy) path += `&sort_by=${encodeURIComponent(sortBy)}`;
-    return this.request("GET", path);
+    return this.request("GET", this.listPath(RESOURCE_PATHS.image_to_image, pageNum, pageSize, sortBy));
   }
 
   async deleteImageToImage(id: string): Promise<void> {

@@ -125,6 +125,12 @@ export function createServer(apiKey?: string): McpServer {
 
   const taskId = z.string().regex(/^[a-zA-Z0-9_-]+$/, "Invalid task ID format").max(100).describe("Task ID");
 
+  const paginationSchema = {
+    page_num: z.number().int().min(1).default(1).describe("Page number"),
+    page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
+    sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
+  };
+
   // --- Text to 3D ---
 
   server.tool(
@@ -187,15 +193,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "text_to_3d_list",
     "List text-to-3D tasks with pagination.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listTextTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -269,15 +271,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_3d_list",
     "List image-to-3D tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -350,15 +348,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "multi_image_to_3d_list",
     "List multi-image-to-3D tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listMultiImageTo3D(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -427,15 +421,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "remesh_list",
     "List remesh tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listRemesh(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -508,15 +498,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "retexture_list",
     "List retexture tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listRetexture(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -692,15 +678,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "text_to_image_list",
     "List text-to-image tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listTextToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -762,15 +744,11 @@ export function createServer(apiKey?: string): McpServer {
   server.tool(
     "image_to_image_list",
     "List image-to-image tasks.",
-    {
-      page_num: z.number().int().min(1).default(1).describe("Page number"),
-      page_size: z.number().int().min(1).max(50).default(10).describe("Items per page (max 50)"),
-      sort_by: z.enum(["+created_at", "-created_at"]).optional().describe("Sort order: '+created_at' (oldest first) or '-created_at' (newest first)"),
-    },
+    paginationSchema,
     async ({ page_num, page_size, sort_by }) => {
       try {
         const tasks = await client.listImageToImage(page_num, page_size, sort_by);
-        return { content: [{ type: "text", text: formatListResponse(tasks as MeshyTask[]) }] };
+        return { content: [{ type: "text", text: formatListResponse(tasks) }] };
       } catch (error) {
         return errorResult(error);
       }
@@ -799,13 +777,13 @@ export function createServer(apiKey?: string): McpServer {
     {
       task_type: z.enum(TASK_TYPES).describe("The type of task to poll"),
       task_id: taskId.describe("Task ID to poll"),
-      poll_interval: z.number().int().min(2).max(30).default(5).optional().describe("Seconds between polls (default 5)"),
-      timeout: z.number().int().min(10).max(600).default(300).optional().describe("Maximum seconds to wait (default 300)"),
+      poll_interval: z.number().int().min(2).max(30).default(5).describe("Seconds between polls (default 5)"),
+      timeout: z.number().int().min(10).max(600).default(300).describe("Maximum seconds to wait (default 300)"),
     },
     async (params) => {
       try {
-        const interval = (params.poll_interval ?? 5) * 1000;
-        const maxTime = (params.timeout ?? 300) * 1000;
+        const interval = params.poll_interval * 1000;
+        const maxTime = params.timeout * 1000;
         const startTime = Date.now();
 
         while (true) {
@@ -822,14 +800,15 @@ export function createServer(apiKey?: string): McpServer {
           }
 
           const elapsed = Date.now() - startTime;
-          if (elapsed >= maxTime) {
+          const remaining = maxTime - elapsed;
+          if (remaining <= 0) {
             return {
-              content: [{ type: "text", text: `Timed out after ${params.timeout ?? 300}s. Last status: ${task.status}, progress: ${task.progress}%` }],
+              content: [{ type: "text", text: `Timed out after ${params.timeout}s. Last status: ${task.status}, progress: ${task.progress}%` }],
               isError: true,
             };
           }
 
-          await new Promise((resolve) => setTimeout(resolve, Math.min(interval, maxTime - elapsed)));
+          await new Promise((resolve) => setTimeout(resolve, Math.min(interval, remaining)));
         }
       } catch (error) {
         return errorResult(error);
